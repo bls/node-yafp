@@ -2,7 +2,7 @@
 // Not bad: http://staxmanade.com/2015/11/testing-asyncronous-code-with-mochajs-and-es7-async-await/
 
 export function mochaAsync(fn: Function) {
-    return async (done) => {
+    return async (done: (err?: any) => void) => {
         try {
             await fn();
             done();

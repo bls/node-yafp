@@ -34,7 +34,7 @@ export class CertificateGenerator {
                 serial: this.caSerial++,
                 days: 3650
             };
-            let certPromise = createCertificateAsync(certOptions).then((keys) => {
+            let certPromise = createCertificateAsync(certOptions).then((keys: pem.CreateCertificateResult) => {
                 return tls.createSecureContext({
                     key: keys.clientKey,
                     cert: keys.certificate,

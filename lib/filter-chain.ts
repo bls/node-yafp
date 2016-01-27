@@ -34,9 +34,9 @@ class Tmp {
 }
 
 export class FilterChain extends events.EventEmitter {
-    handlers: StreamFilter[] = [];
-    streamSet = new Set<NodeJS.ReadableStream>();
-    tmp = new Tmp();
+    private handlers: StreamFilter[] = [];
+    private streamSet = new Set<NodeJS.ReadableStream>();
+    private tmp = new Tmp();
 
     constructor() {
         super();
@@ -80,7 +80,7 @@ export class FilterChain extends events.EventEmitter {
     private forwardStreamErrors(strm: NodeJS.ReadableStream) {
         if(!this.streamSet.has(strm)) {
             this.streamSet.add(strm);
-            strm.on('error', e => this.emit('error', e));
+            strm.on('error', (e: any) => this.emit('error', e));
         }
     }
 }

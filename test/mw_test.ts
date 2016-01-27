@@ -54,7 +54,7 @@ describe('middleware', function() {
     it('should not crash on decompression errors', mochaAsync(async () => {
         let sawError = false;
         proxy.addHandler(decompressor);
-        proxy.on('error', e => sawError = true);
+        proxy.on('error', (e: any) => sawError = true);
         let r = await requestp({
             proxy: 'http://localhost:30002',
             url: 'http://localhost:30000/gzip-busted'
@@ -97,7 +97,7 @@ describe('middleware', function() {
 
     it('should handle broken request transforms', mochaAsync(async () => {
         let sawError = false;
-        proxy.on('error', e => sawError = true);
+        proxy.on('error', (e: any) => sawError = true);
         proxy.addHandler(async (ctx: RequestContext) => {
             ctx.withRequestStream(async (strm): Promise<NodeJS.ReadableStream> => {
                 throw new Error('oops');
@@ -114,7 +114,7 @@ describe('middleware', function() {
 
     it('should handle broken response transforms', mochaAsync(async () => {
         let sawError = false;
-        proxy.on('error', e => sawError = true);
+        proxy.on('error', (e: any) => sawError = true);
         proxy.addHandler(async (ctx: RequestContext) => {
             ctx.withResponseStream(async (strm): Promise<NodeJS.ReadableStream> => {
                 throw new Error('oops');

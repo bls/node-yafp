@@ -5,7 +5,7 @@ import * as fs from 'fs';
 // Promise to collect a stream into a buffer; promise resolves when the stream ends.
 export function streamToBuffer(strm: NodeJS.ReadableStream): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-        let parts = [];
+        let parts: Buffer[] = [];
         strm.on('error', (e: any) => reject(e));
         strm.on('data', (buf: Buffer) => parts.push(buf));
         strm.on('end', () => resolve(Buffer.concat(parts)));
@@ -54,7 +54,7 @@ export class PassthroughStream extends stream.Transform {
     constructor() {
         super();
     }
-    _transform(data, encoding, callback): void {
+    _transform(data: Buffer, encoding: string, callback: Function): void {
         callback(null, data);
     }
 }

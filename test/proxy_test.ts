@@ -19,7 +19,7 @@ describe('proxy', function() {
         request({
             proxy: 'http://localhost:30002',
             url: 'http://localhost:30000/test?foo=bar'
-        }, function(err, res) {
+        }, function(err: any, res: any) {
             if (err) {
                 return done(err);
             }
@@ -44,7 +44,7 @@ describe('proxy', function() {
             form: {hello: 'world'},
             proxy: 'http://localhost:30002',
             url: 'http://localhost:30000/test?foo=bar'
-        }, function(err, res) {
+        }, function(err: any, res: any) {
             if (err) {
                 return done(err);
             }
@@ -69,7 +69,7 @@ describe('proxy', function() {
         request({
             proxy: 'http://localhost:30002',
             url: 'https://localhost:30001/test?foo=bar'
-        }, function(err, res) {
+        }, function(err: any, res: any) {
             if (err) {
                 return done(err);
             }
@@ -94,7 +94,7 @@ describe('proxy', function() {
             form: {hello: 'world'},
             proxy: 'http://localhost:30002',
             url: 'https://localhost:30001/test?foo=bar'
-        }, function(err, res) {
+        }, function(err: any, res: any) {
             if (err) {
                 return done(err);
             }
@@ -121,7 +121,7 @@ describe('proxy', function() {
             form: {hello: 'world'},
             proxy: 'http://localhost:30002',
             url: 'https://localhost:30001/not-found'
-        }, function(err, body, response) {
+        }, function(err: any, body: any, response: any) {
             if (err) {
                 return done(err);
             }
@@ -137,7 +137,7 @@ describe('proxy', function() {
             proxy: 'http://localhost:30002',
             url: 'http://localhost:30000/redirect',
             followRedirect: false
-        }, function(err, body, response) {
+        }, function(err: any, body: any, response: any) {
             if (err) {
                 return done(err);
             }
@@ -147,12 +147,12 @@ describe('proxy', function() {
     });
 
     it('should handle unreachable hosts', function(done) {
-        proxy.on('error', (e) => {});
+        proxy.on('error', (e: any) => {});
         request({
             method: 'GET',
             proxy: 'http://localhost:30002',
             url: 'http://aklsjdokdjsflksdjfoisdjfoijsdf.com/'
-        }, function(err, body, response) {
+        }, function(err: any, body: any, response: any) {
             if (err) {
                 return done(err);
             }
@@ -165,7 +165,7 @@ describe('proxy', function() {
     /*
     it('should be possible to modify responses', function(done) {
         proxy.use(function(clientReq, clientRes, next) {
-            proxy.forward(clientReq, clientRes, function(proxyReq) {
+            proxy.forward(clientReq, c lientRes, function(proxyReq) {
                 proxyReq.on('response', function (serverResponse) {
                     serverResponse.on('data', function(data) {
                         assert.equal(data.toString(), 'CHANGEME');

@@ -60,12 +60,12 @@ export class ProxyEngine extends events.EventEmitter {
     }
     async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
         let ctx = new RequestContext();
-        ctx.on('error', e => this.handleError(e, res));
+        ctx.on('error', (e: any) => this.handleError(e, res));
         try {
             this.handlers.forEach(h => h(ctx));
             let requestStream = await ctx._handleRequest(req);
             let proxyReq = createProxyRequest(req);
-            proxyReq.on('error', e => this.handleError(e, res));
+            proxyReq.on('error', (e: any) => this.handleError(e, res));
             requestStream.pipe(new PassthroughStream()).pipe(proxyReq); // Suppress 'request' library cleverness
             proxyReq.on('response', async (serverRes: http.IncomingMessage) => {
                 serverRes.pause();
@@ -98,16 +98,16 @@ enum RequestState {
 
 export class RequestContext extends events.EventEmitter {
     id = randomString(8);
-    state = RequestState.START;
-    reqHandlers: MessageHandler[] = [];
-    resHandlers: MessageHandler[] = [];
-    reqFilters = new FilterChain();
-    resFilters = new FilterChain();
+    private state = RequestState.START;
+    private reqHandlers: MessageHandler[] = [];
+    private resHandlers: MessageHandler[] = [];
+    private reqFilters = new FilterChain();
+    private resFilters = new FilterChain();
 
     constructor() {
         super();
-        this.reqFilters.on('error', e => this.emit('error', e));
-        this.resFilters.on('error', e => this.emit('error', e));
+        this.reqFilters.on('error', (e: any) => this.emit('error', e));
+        this.resFilters.on('error', (e: any) => this.emit('error', e));
     }
     withRequest(fn: MessageHandler) {
         this.reqHandlers.push(fn);
