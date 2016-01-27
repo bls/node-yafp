@@ -1,0 +1,42 @@
+{
+  "name": "@bls/yafp",
+  "version": "0.0.1",
+  "description": "Yet Another Forward Proxy",
+  "main": "dist/lib/index.js",
+  "typings": "dist/lib/index.d.ts",
+  "scripts": {
+    "test": "mocha -s 1000 dist/test",
+    "lint": "find lib/ -type f | xargs tslint",
+    "proxy": "NODE_ENV=production node dist/bin/proxy.js",
+    "build": "npm run lint && tsc",
+    "prepublish": "npm run build",
+    "clean": "rm -rf dist/lib dist/test dist/examples dist/bin"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bls/node-yafp.git"
+  },
+  "keywords": [
+    "proxy",
+    "web",
+    "mitm"
+  ],
+  "author": "Blair Strang <blair.strang@gmail.com>",
+  "homepage": "https://github.com/bls/",
+  "license": "MIT",
+  "devDependencies": {
+    "body-parser": "^1.14.1",
+    "express": "^4.13.3",
+    "jimp": "^0.2.21",
+    "mocha": "^2.2.4",
+    "typescript": "1.8.0-dev.20160125",
+    "tslint": "^2.5.0-beta"
+  },
+  "dependencies": {
+    "@sane/fs": "^1.0.2",
+    "@sane/service": "^1.0.0",
+    "es6-promisify": "^3.0.0",
+    "pem": "^1.8.1",
+    "request": "^2.67.0"
+  }
+}

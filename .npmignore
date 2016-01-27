@@ -1,0 +1,3 @@
+# Why is this here if there's nothing in it?  By default, npm will
+# ignore everything in .gitignore... unless there's a .npmignore. This
+# includes the compiled JS, which we want to ship.
