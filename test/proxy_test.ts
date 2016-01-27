@@ -1,9 +1,9 @@
 import * as assert from 'assert';
-import { Proxy } from '../../lib/proxy';
+import { Proxy } from '../lib/proxy';
 import { TestServer } from './helpers/TestServer';
 import { request } from './helpers/request';
 import { ServiceGroup } from '@sane/service';
-import { promiseCallback } from '../../lib/util';
+import { promiseCallback } from '../lib/util';
 
 const keepAliveValue = 'close'; // || 'keep-alive'
 

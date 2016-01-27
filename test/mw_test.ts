@@ -3,12 +3,12 @@ import * as fs from '@sane/fs';
 import { mochaAsync } from './helpers/mochaAsync';
 import { TestServer } from './helpers/TestServer';
 import { requestp } from './helpers/request';
-import { Proxy } from '../../lib/proxy';
-import { RequestContext } from '../../lib/engine';
+import { Proxy } from '../lib/proxy';
+import { RequestContext } from '../lib/engine';
 import { ServiceGroup } from '@sane/service';
-import { decompressor } from '../../lib/middleware/decompressor';
-import { promiseCallback } from '../../lib/util';
-import { bufferToStream } from '../../lib/stream-adaptor';
+import { decompressor } from '../lib/middleware/decompressor';
+import { promiseCallback } from '../lib/util';
+import { bufferToStream } from '../lib/stream-adaptor';
 
 async function sayHello(data: NodeJS.ReadableStream): Promise<NodeJS.ReadableStream> {
     data.resume(); // Throw away original stream...
