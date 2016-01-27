@@ -1,5 +1,5 @@
 {
-  "name": "@bls/yafp",
+  "name": "yafp",
   "version": "0.0.1",
   "description": "Yet Another Forward Proxy",
   "main": "dist/lib/index.js",
