@@ -3,6 +3,7 @@ import * as https from 'https';
 import * as net from 'net';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
 import * as events from 'events';
 import * as tls from 'tls';
 import { ProxyEngine, ProxyRequestHandler } from './engine';
@@ -14,6 +15,8 @@ export interface ProxyOptions {
     proxy?: string;
     port: number;
     host?: string;
+    caCert?: string;
+    caKey?: string;
 }
 
 export class Proxy extends events.EventEmitter implements IService {
@@ -42,8 +45,11 @@ export class Proxy extends events.EventEmitter implements IService {
         httpServer.addListener('connect', this._connectHandler.bind(this));
 
         // HTTPS
-        let key = fs.readFileSync('./cert/dummy.key', 'utf8'),
-            cert = fs.readFileSync('./cert/dummy.crt', 'utf8'),
+        let moduleDir = path.normalize(__dirname + '/../../'),
+            keyFile = this.opts.caKey || moduleDir + 'cert/dummy.key',
+            certFile = this.opts.caCert || moduleDir + 'cert/dummy.crt',
+            key = fs.readFileSync(keyFile, 'utf8'),
+            cert = fs.readFileSync(certFile, 'utf8'),
             certGen = new CertificateGenerator({ caKey: key, caCert: cert });
 
         if (fs.existsSync(this.socket)) {
