@@ -1,9 +1,12 @@
 {
   "name": "yafp",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Yet Another Forward Proxy",
   "main": "dist/lib/index.js",
   "typings": "dist/lib/index.d.ts",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "test": "mocha -s 1000 dist/test",
     "lint": "find lib/ -type f | xargs tslint",
