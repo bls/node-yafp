@@ -1,14 +1,14 @@
+// Flip images upside-down, with Jimp (https://www.npmjs.com/package/jimp)
 
 import * as http from 'http';
-import * as proxy from '../lib/index';
+import * as yafp from '../lib/index';
 import promisify = require('es6-promisify');
 var Jimp: any = require('jimp');
 
 function getImageType(resp: http.IncomingMessage): string {
     let supportedImageTypes = ['image/png', 'image/jpeg', 'image/bmp'],
-        contentType = resp.headers['content-type'] || '';
+        contentType = (resp.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
 
-    contentType = contentType.split(';')[0].trim().toLowerCase();
     contentType = contentType.replace('image/jpg', 'image/jpeg');
     if(supportedImageTypes.indexOf(contentType) !== -1) {
         return contentType;
@@ -24,25 +24,23 @@ async function rotateImage(contentType: string, buf: Buffer): Promise<Buffer> {
     return getBuffer(contentType);
 }
 
-let p = new proxy.Proxy({port: 6666});
-p.addHandler(proxy.middleware.decompressor);
-p.addHandler(proxy.middleware.nocache);
-p.addHandler((ctx: proxy.RequestContext): void => {
-    let reqUrl: string;
-    ctx.withRequest((req): void => {
-        reqUrl = req.headers['host'] + req.url;
-    });
+let listenPort = 6666,
+    proxy = new yafp.Proxy({port: 6666});
+proxy.addHandler(yafp.middleware.decompressor);
+proxy.addHandler(yafp.middleware.nocache);
+proxy.addHandler((ctx: yafp.RequestContext): void => {
     ctx.withResponse((resp): void => {
         let contentType = getImageType(resp);
-        if(contentType !== null) {
-            console.log(`Modifying image: ${reqUrl} - ${contentType}`);
+        if(contentType) {
             ctx.withResponseBuffer(async (data: Buffer): Promise<Buffer> => {
                 try {
-                    console.log(`Image was: ${data.length} bytes...`);
+                    let lengthBefore = data.length;
                     data = await rotateImage(contentType, data);
-                    console.log(`Image is now: ${data.length} bytes...`);
+                    let lengthAfter = data.length;
+                    console.log(`Modifying image: ${ctx.url} - ${contentType} - was ${lengthBefore} now ${lengthAfter} bytes`);
                 } catch(e) {
-                    console.log(`Image processing error: ${e}`);
+                    console.log(`Error processing: ${ctx.url} - ${contentType}`);
+                    console.log(e.stack);
                 }
                 resp.headers['content-length'] = data.length;
                 return data;
@@ -50,7 +48,8 @@ p.addHandler((ctx: proxy.RequestContext): void => {
         }
     });
 });
-p.on('error', (e: any) => {
-    console.log(e);
+proxy.on('error', (e: any) => { console.log(e.stack); });
+proxy.start().then(() => {
+    console.log(`Proxy listening on port: ${listenPort}`);
 });
-p.start();
+

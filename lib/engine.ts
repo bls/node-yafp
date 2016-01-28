@@ -1,3 +1,4 @@
+// Low level proxy logic
 
 import * as http from 'http';
 import * as url from 'url';
@@ -59,7 +60,7 @@ export class ProxyEngine extends events.EventEmitter {
         this.handlers = [];
     }
     async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-        let ctx = new RequestContext();
+        let ctx = new RequestContext(getRequestUrl(req));
         ctx.on('error', (e: any) => this.handleError(e, res));
         try {
             this.handlers.forEach(h => h(ctx));
@@ -97,6 +98,7 @@ enum RequestState {
 }
 
 export class RequestContext extends events.EventEmitter {
+    url: string;
     id = randomString(8);
     private state = RequestState.START;
     private reqHandlers: MessageHandler[] = [];
@@ -104,8 +106,9 @@ export class RequestContext extends events.EventEmitter {
     private reqFilters = new FilterChain();
     private resFilters = new FilterChain();
 
-    constructor() {
+    constructor(url: string) {
         super();
+        this.url = url;
         this.reqFilters.on('error', (e: any) => this.emit('error', e));
         this.resFilters.on('error', (e: any) => this.emit('error', e));
     }
@@ -145,6 +148,11 @@ export class RequestContext extends events.EventEmitter {
         this.resHandlers.forEach(fn => fn(resp));
         return this.resFilters.run(resp);
     }
+    // The need to defer here is a bit subtle. Basically some middleware (e.g. decompressor) will call
+    // withResponse(...), examine headers and conditionally modify a response. On the other hand, our API allows
+    // middleware to just call withResponse{Buffer/File/Stream} without stopping to look at the headers. If it
+    // is doing that, we transparently wrap it in withRequest() or withResponse(), to ensure that handlers always
+    // run in the right order.
     private _deferUntilRequest(fn: () => void): void {
         if(this.state === RequestState.GOT_REQUEST) {
             fn();

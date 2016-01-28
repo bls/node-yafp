@@ -1,3 +1,4 @@
+// Low level middleware details; basically a series of async transforms
 
 import * as path from 'path';
 import * as os from 'os';

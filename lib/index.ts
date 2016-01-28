@@ -1,3 +1,4 @@
+// Library entry point
 
 import { RequestContext } from './engine';
 import { decompressor } from './middleware/decompressor';

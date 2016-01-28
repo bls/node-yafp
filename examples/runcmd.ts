@@ -1,5 +1,6 @@
+// Run the UNIX 'file' command on every http response
 
-import * as proxy from '../lib/index';
+import * as yafp from '../lib/index';
 import { exec } from 'child_process';
 
 interface ExecResult {
@@ -23,17 +24,18 @@ function pexec(cmd: string): Promise<ExecResult> {
     });
 }
 
-let p = new proxy.Proxy({port: 6666});
-p.addHandler(proxy.middleware.nocache);
-p.addHandler(proxy.middleware.decompressor);
-p.addHandler((ctx) => {
+let listenPort = 6666,
+    proxy = new yafp.Proxy({port: listenPort});
+proxy.addHandler(yafp.middleware.nocache);
+proxy.addHandler(yafp.middleware.decompressor);
+proxy.addHandler((ctx) => {
     ctx.withResponseFile(async (path: string): Promise<string> => {
-        let r = await pexec(`/usr/bin/file ${path}`);
-        console.log(r.stdout.toString());
+        let r = await pexec(`/usr/bin/file -b ${path}`);
+        console.log(`${ctx.url} -> ${r.stdout.toString().trim()}`);
         return path;
     });
 });
-p.on('error', (e: any) => {
-    console.log(e);
+proxy.on('error', (e: any) => { console.log(e.stack); });
+proxy.start().then(() => {
+    console.log(`Proxy listening on port: ${listenPort}`);
 });
-p.start();

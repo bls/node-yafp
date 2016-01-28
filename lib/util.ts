@@ -1,3 +1,4 @@
+// Misc utils
 
 import * as crypto from 'crypto';
 
@@ -7,8 +8,7 @@ export function promiseCallback<T>(p: Promise<T>, cb: (err: any, result?: T) => 
         .catch((err: any) => cb(err));
 }
 
-// Generate a random string of length n
-// Note: distribution of characters won't be even.
+// Generate a random string of length n. Note: distribution of characters won't be even.
 export function randomString(n: number): string {
     let charset = 'abcdefghijklmnopqrstuvwxyz0123456789',
         buf = crypto.randomBytes(n),

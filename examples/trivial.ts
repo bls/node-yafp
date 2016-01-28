@@ -1,10 +1,12 @@
+// A passthrough proxy
 
-import * as proxy from '../lib/index';
+import * as yafp from '../lib/index';
 
-let p = new proxy.Proxy({port: 6666});
-p.addHandler(proxy.middleware.decompressor);
-p.addHandler(proxy.middleware.nocache);
-p.on('error', (e: any) => {
-    console.log(e);
+let listenPort = 6666,
+    proxy = new yafp.Proxy({port: 6666});
+proxy.addHandler(yafp.middleware.decompressor);
+proxy.addHandler(yafp.middleware.nocache);
+proxy.on('error', (e: any) => { console.log(e.stack); });
+proxy.start().then(() => {
+    console.log(`Proxy listening on port: ${listenPort}`);
 });
-p.start();
