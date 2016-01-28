@@ -22,7 +22,7 @@ npm install yafp --save
 
 ## Example
 
-Simple response modification looks something like this:
+Simple response modification looks something like this (in typescript):
 
 ```typescript
 
