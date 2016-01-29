@@ -1,5 +1,6 @@
 // Parse TLS ClientHello to see if the client supports SNI
-// Logic copied from: https://github.com/dlundquist/sniproxy/blob/master/src/tls.c
+// Logic from: https://github.com/dlundquist/sniproxy/blob/master/src/tls.c @ 6fa5157
+// Ported as directly as possible to TypeScript.
 
 /* tslint:disable:no-bitwise */
 
@@ -156,7 +157,6 @@ function parse_server_name_extension(data: Uint8Array) {
 
         switch (data[pos]) { /* name type */
             case 0x00: /* host_name */
-                // strncpy(*hostname, data + pos + 3, len);
                 let namebuf = data.slice(pos + 3, pos + 3 + len);
                 return String.fromCharCode.apply(null, namebuf);
             default:
