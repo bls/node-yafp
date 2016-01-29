@@ -1,3 +1,5 @@
+// High level proxy logic
+
 import * as http from 'http';
 import * as https from 'https';
 import * as net from 'net';
@@ -72,19 +74,19 @@ export class Proxy extends events.EventEmitter implements IService {
             new Service(httpsServer, { path: this.socket })
         ]);
     }
-    async start() {
+    async start(): Promise<void> {
         await this.services.start();
     }
-    async stop() {
+    async stop(): Promise<void> {
         await this.services.stop();
     }
     addHandler(h: ProxyRequestHandler): void {
         this.engine.addHandler(h);
     }
-    clearHandlers() {
+    clearHandlers(): void {
         this.engine.clearHandlers();
     }
-    private _connectHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer) {
+    private _connectHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
         let httpVersion = request.httpVersion;
 
         var proxySocket = new net.Socket();

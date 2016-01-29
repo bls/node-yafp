@@ -1,3 +1,4 @@
+// Utils for converting between buffers and streams and named files and so on.
 
 import * as stream from 'stream';
 import * as fs from 'fs';
