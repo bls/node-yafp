@@ -3,7 +3,7 @@
 // Ported as directly as possible to TypeScript.
 
 import * as assert from 'assert';
-import * as sni from '../lib/sni';
+import * as sniff from '../lib/sniff';
 
 const good_data_1: number[] = [
     // TLS record
@@ -335,36 +335,35 @@ const bad_data_4: number[] = [
     0x01 // Mode: Peer allows to send requests
 ];
 
-describe('ClientHello SNI extraction', function() {
-    it('should extract hostname from a ClientHello with SNI (1)', function() {
+describe('TLS detection', function() {
+    it('should extract hostname from a ClientHello with SNI (1)', () => {
         let data = new Buffer(good_data_1),
-            hostname = sni.extractServerNameFromClientHello(data);
-        assert.equal(hostname, 'localhost');
+            result = sniff.detectTLS(data);
+        assert.equal(result.state, sniff.State.HAS_SNI);
+        assert.equal(result.hostname, 'localhost');
     });
-    it('should extract hostname from a ClientHello with SNI (2)', function() {
+    it('should extract hostname from a ClientHello with SNI (2)', () => {
         let data = new Buffer(good_data_2),
-            hostname = sni.extractServerNameFromClientHello(data);
-        assert.equal(hostname, 'localhost');
+            result = sniff.detectTLS(data);
+        assert.equal(result.state, sniff.State.HAS_SNI);
+        assert.equal(result.hostname, 'localhost');
     });
-    it('should extract hostname from a ClientHello with SNI (3)', function() {
+    it('should extract hostname from a ClientHello with SNI (3)', () => {
         let data = new Buffer(good_data_3),
-            hostname = sni.extractServerNameFromClientHello(data);
-        assert.equal(hostname, 'localhost');
+            result = sniff.detectTLS(data);
+        assert.equal(result.state, sniff.State.HAS_SNI);
+        assert.equal(result.hostname, 'localhost');
     });
-    it('should extract hostname from a ClientHello with SNI (4)', function() {
+    it('should extract hostname from a ClientHello with SNI (4)', () => {
         let data = new Buffer(good_data_4),
-            hostname = sni.extractServerNameFromClientHello(data);
-        assert.equal(hostname, 'localhost');
+            result = sniff.detectTLS(data);
+        assert.equal(result.state, sniff.State.HAS_SNI);
+        assert.equal(result.hostname, 'localhost');
     });
-    it('should throw on an SSL 2.0 ClientHello', function() {
-        let data = new Buffer(ssl20_client_hello);
-        try {
-            let hostname = sni.extractServerNameFromClientHello(data);
-            assert.equal(1, 2);
-        } catch (e) {
-            assert.notEqual(e.message.indexOf('SSL 2.0'), -1);
-        }
+    it('should not detect SNI for an SSL 2.0 ClientHello', () => {
+        let data = new Buffer(ssl20_client_hello),
+            result = sniff.detectTLS(data);
+        assert.equal(result.state, sniff.State.NO_SNI);
+        assert.notEqual(result.reason.indexOf('SSL 2.0'), -1);
     });
-
-
 });
