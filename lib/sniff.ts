@@ -1,21 +1,36 @@
-// Parse TLS ClientHello to see if the client supports SNI
-// Logic from: https://github.com/dlundquist/sniproxy/blob/master/src/tls.c @ 6fa5157
+// Sniff CONNECT data to detect TLS + SNI
+// ClientHello parsing Logic from: https://github.com/dlundquist/sniproxy/blob/master/src/tls.c @ 6fa5157
 // Ported as directly as possible to TypeScript.
 
 /* tslint:disable:no-bitwise */
+/* tslint:disable:no-unused-variable */
 
-export function extractServerNameFromClientHello(buf: Buffer): string {
+export enum State {
+    NEED_MORE_DATA = 0,
+    NOT_TLS = 1,
+    HAS_SNI = 2,
+    NO_SNI = 3
+}
+
+export interface SniffResult {
+    state: State;
+    hostname?: string;
+    reason?: string;
+}
+
+export function detectTLS(buf: Buffer): SniffResult {
     return parse_tls_header(new Uint8Array(buf));
 }
 
 const TLS_HEADER_LEN = 5,
+      MAX_CLIENT_HELLO_LEN = 2048,  // Heuristic only
       TLS_HANDSHAKE_CONTENT_TYPE = 0x16,
       TLS_HANDSHAKE_TYPE_CLIENT_HELLO = 0x01;
 
 // Parse a TLS packet for the Server Name Indication extension in the client
 // hello handshake, returning the first servername found.
 
-function parse_tls_header(data: Uint8Array): string {
+function parse_tls_header(data: Uint8Array): SniffResult {
     let tls_content_type: number,
         tls_version_major: number,
         tls_version_minor: number,
@@ -23,9 +38,9 @@ function parse_tls_header(data: Uint8Array): string {
         len: number,
         data_len = data.byteLength;
 
-    /* Check that our TCP payload is at least large enough for a TLS header */
+    /* Check that our data is at least large enough for a TLS header */
     if (data_len < TLS_HEADER_LEN) {
-        throw new Error('ClientHello too short');
+        return { state: State.NEED_MORE_DATA };
     }
 
     /* SSL 2.0 compatible Client Hello
@@ -35,38 +50,44 @@ function parse_tls_header(data: Uint8Array): string {
      * See RFC5246 Appendix E.2
      */
     if (data[0] & 0x80 && data[2] === 1) {
-        throw new Error('Received SSL 2.0 Client Hello which can not support SNI.');
+        return { state: State.NO_SNI, reason: 'Received SSL 2.0 Client Hello which can not support SNI.' };
     }
 
     tls_content_type = data[0];
     if (tls_content_type !== TLS_HANDSHAKE_CONTENT_TYPE) {
-        throw new Error('Request did not begin with TLS handshake.');
+        return { state: State.NOT_TLS, reason: 'Request did not begin with TLS handshake.' };
     }
 
     tls_version_major = data[1];
     tls_version_minor = data[2];
     if (tls_version_major < 3) {
         let ver = `${tls_version_major}.${tls_version_minor}`;
-        throw new Error(`Received SSL ${ver} handshake which which can not support SNI.`);
+        return { state: State.NO_SNI, reason: `Received SSL ${ver} handshake which which can not support SNI.` };
     }
 
     /* TLS record length */
     len = (data[3] << 8) + data[4] + TLS_HEADER_LEN;
     data_len = Math.min(data_len, len);
 
+    /* Sanity check the record length */
+    if(data_len > MAX_CLIENT_HELLO_LEN) {
+        return { state: State.NOT_TLS, reason: `ClientHello length ${data_len} > ${MAX_CLIENT_HELLO_LEN}` };
+    }
+
+
     /* Check we received entire TLS record length */
     if (data_len < len) {
-        throw new Error('ClientHello length mismatch');
+        return { state: State.NEED_MORE_DATA, reason: 'Not enough data to parse ClientHello' };
     }
 
     /*
      * Handshake
      */
     if (pos + 1 > data_len) {
-        throw new Error('Could not read handshake type');
+        return { state: State.NOT_TLS, reason: 'Could not read handshake type' };
     }
     if (data[pos] !== TLS_HANDSHAKE_TYPE_CLIENT_HELLO) {
-        throw new Error('Not a ClientHello');
+        return { state: State.NOT_TLS, reason: 'Not a ClientHello' };
     }
 
     /* Skip past fixed length records:
@@ -80,38 +101,38 @@ function parse_tls_header(data: Uint8Array): string {
 
     /* Session ID */
     if (pos + 1 > data_len) {
-        throw new Error('Could not read session ID length');
+        return { state: State.NOT_TLS, reason: 'Could not read session ID length' };
     }
     len = data[pos];
     pos += 1 + len;
 
     /* Cipher Suites */
     if (pos + 2 > data_len) {
-        throw new Error('Could not read cipher suite length');
+        return { state: State.NOT_TLS, reason: 'Could not read cipher suite length' };
     }
     len = (data[pos] << 8) + data[pos + 1];
     pos += 2 + len;
 
     /* Compression Methods */
     if (pos + 1 > data_len) {
-        throw new Error('Could not read compression message length');
+        return { state: State.NOT_TLS, reason: 'Could not read compression message length' };
     }
     len = data[pos];
     pos += 1 + len;
 
     if (pos === data_len && tls_version_major === 3 && tls_version_minor === 0) {
-        throw new Error('Received SSL 3.0 handshake without extensions');
+        return { state: State.NO_SNI, reason: 'Received SSL 3.0 handshake without extensions' };
     }
 
     /* Extensions */
     if (pos + 2 > data_len) {
-        throw new Error('Could not read TLS extensions length');
+        return { state: State.NOT_TLS, reason: 'Could not read TLS extensions length' };
     }
     len = (data[pos] << 8) + data[pos + 1];
     pos += 2;
 
     if (pos + len > data_len) {
-        throw new Error('Packet is too short to hold extensions');
+        return { state: State.NOT_TLS, reason: 'Packet is too short to hold extensions' };
     }
     return parse_extensions(data.slice(pos, pos + len));
 }
@@ -130,7 +151,7 @@ function parse_extensions(data: Uint8Array) {
             /* There can be only one extension of each type, so we break
              our state and move p to beinnging of the extension here */
             if (pos + 4 + len > data_len) {
-                throw new Error('Oops, failed to read TLS extensions');
+                return { state: State.NOT_TLS, reason: 'Bad SNI extension length' };
             }
             return parse_server_name_extension(data.slice(pos + 4, pos + 4 + len));
         }
@@ -138,13 +159,13 @@ function parse_extensions(data: Uint8Array) {
     }
     /* Check we ended where we expected to */
     if (pos !== data_len) {
-        throw new Error('Failed to parse all TLS extensions, corrupt ClientHello?');
+        return { state: State.NOT_TLS, reason: 'Failed to parse TLS extension data' };
     }
 
-    throw new Error('SNI extension not found');
+    return { state: State.NO_SNI, reason: 'SNI extension not found' };
 }
 
-function parse_server_name_extension(data: Uint8Array) {
+function parse_server_name_extension(data: Uint8Array): SniffResult {
     let pos: number = 2,
         data_len: number = data.byteLength;
 
@@ -152,13 +173,16 @@ function parse_server_name_extension(data: Uint8Array) {
         let len = (data[pos + 1] << 8) + data[pos + 2];
 
         if (pos + 3 + len > data_len) {
-            throw new Error('Error parsing SNI extension');
+            return { state: State.NOT_TLS, reason: 'Error parsing TLS SNI extension' };
         }
 
         switch (data[pos]) { /* name type */
             case 0x00: /* host_name */
                 let namebuf = data.slice(pos + 3, pos + 3 + len);
-                return String.fromCharCode.apply(null, namebuf);
+                return {
+                    state: State.HAS_SNI,
+                    hostname: String.fromCharCode.apply(null, namebuf)
+                };
             default:
                 // Ignore unknown SNI extension name type
                 // throw new Error(`Unknown server name extension name type: ${data[pos]}`);
@@ -167,8 +191,8 @@ function parse_server_name_extension(data: Uint8Array) {
     }
     /* Check we ended where we expected to */
     if (pos !== data_len) {
-        throw new Error('Error parsing SNI extension: failed to consume everything');
+        return { state: State.NOT_TLS, reason: 'Error parsing SNI extension: failed to consume everything' };
     }
 
-    throw new Error('SNI hostname not found :(');
+    return { state: State.NO_SNI, reason: 'SNI hostname not found :(' };
 }

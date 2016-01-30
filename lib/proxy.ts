@@ -11,6 +11,7 @@ import * as tls from 'tls';
 import { ProxyEngine, ProxyRequestHandler } from './engine';
 import { CertificateGenerator } from './certgen';
 import { IService, Service, ServiceGroup } from '@sane/service';
+import * as sniff from './sniff';
 
 export interface ProxyOptions {
     strictSSL?: boolean;
@@ -87,13 +88,12 @@ export class Proxy extends events.EventEmitter implements IService {
         this.engine.clearHandlers();
     }
     private _connectHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
-        let httpVersion = request.httpVersion;
+        let httpVersion = request.httpVersion,
+            proxySocket = new net.Socket(),
+            streamHead: Buffer[] = [head];
 
-        var proxySocket = new net.Socket();
-        proxySocket.connect(this.socket, () => {
-            proxySocket.write(head);
-            clientSocket.write(`HTTP/${httpVersion} 200 Connection established\r\n\r\n`);
-
+        function passthru() {
+            streamHead.forEach((b: Buffer) => proxySocket.write(b));
             proxySocket.pipe(clientSocket);
             clientSocket.pipe(proxySocket);
 
@@ -102,6 +102,37 @@ export class Proxy extends events.EventEmitter implements IService {
                 clientSocket.end();
             });
             clientSocket.on('error', (err: any) => proxySocket.end());
+        }
+
+        function onreadable() {
+            let buf = clientSocket.read();
+            if(buf !== null) {
+                streamHead.push(buf);
+                let full = Buffer.concat(streamHead);
+                let result = sniff.detectTLS(full);
+                if(result.state === sniff.State.NEED_MORE_DATA) {
+                    console.log('NOT ENOUGH DATA YET');
+                } else {
+                    clientSocket.removeListener('onreadable', onreadable);
+                    switch(result.state) {
+                        case sniff.State.HAS_SNI:
+                            console.log(`SNI: ${result.hostname}`);
+                            passthru();
+                            break;
+                        case sniff.State.NO_SNI:
+                            passthru();
+                            break;
+                        case sniff.State.NOT_TLS:
+                            passthru();
+                            break;
+                    }
+                }
+            }
+        }
+
+        proxySocket.connect(this.socket, () => {
+            clientSocket.write(`HTTP/${httpVersion} 200 Connection established\r\n\r\n`);
+            clientSocket.on('readable', onreadable);
         });
     };
 }
