@@ -16,7 +16,7 @@ interface RequestOptions {
     strictSSL?: boolean;
 }
 
-function getRequestUrl(req: http.IncomingMessage): string {
+export function getRequestUrl(req: http.IncomingMessage): string {
     let parsedUrl = url.parse(req.url),
         scheme = (<any> req).connection.encrypted ? 'https' : 'http',
         host = req.headers['host'] || parsedUrl.host;

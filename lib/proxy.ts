@@ -8,7 +8,8 @@ import * as os from 'os';
 import * as path from 'path';
 import * as events from 'events';
 import * as tls from 'tls';
-import { ProxyEngine, ProxyRequestHandler } from './engine';
+import * as WebSocket from 'ws';
+import { ProxyEngine, ProxyRequestHandler, getRequestUrl } from './engine';
 import { CertificateGenerator } from './certgen';
 import { IService, Service, ServiceGroup } from '@sane/service';
 import * as sniff from './sniff';
@@ -69,6 +70,13 @@ export class Proxy extends events.EventEmitter implements IService {
         };
         let httpsServer = https.createServer(<any> tlsOptions, requestHandler);
 
+        // WEBSOCKETS
+        //httpServer.addListener('upgrade', this._ugpradeHandler.bind(this));
+        // httpsServer.addListener('upgrade', this._ugpradeHandler.bind(this));
+
+        let wsServer = new WebSocket.Server({ server: httpServer });
+        wsServer.on('connection', this._onWebSocketServerConnect.bind(this, false)); // TODO
+
         // Wrap in services for startup / shutdown
         this.services = new ServiceGroup([
             new Service(httpServer, { port: this.opts.port }),
@@ -92,6 +100,7 @@ export class Proxy extends events.EventEmitter implements IService {
             proxySocket = new net.Socket(),
             streamHead: Buffer[] = [head];
 
+        // Proxy from client -> server
         function passthru() {
             streamHead.forEach((b: Buffer) => proxySocket.write(b));
             proxySocket.pipe(clientSocket);
@@ -104,25 +113,32 @@ export class Proxy extends events.EventEmitter implements IService {
             clientSocket.on('error', (err: any) => proxySocket.end());
         }
 
+        // We sniff the start of the CONNECT data stream to distinguish between 3 cases:
+        // 1) TLS with SNI -> Can simply forward to HTTPS server
+        // 2) TLS without SNI -> Need to perform certificate sniffing
+        // 3) Not TLS -> Process as a WebSocket connection
+        // TODO: consider detecting websockets manually; see if we can passthru arbitrary data streams?
+
         function onreadable() {
             let buf = clientSocket.read();
             if(buf !== null) {
                 streamHead.push(buf);
                 let full = Buffer.concat(streamHead);
                 let result = sniff.detectTLS(full);
-                if(result.state === sniff.State.NEED_MORE_DATA) {
-                    console.log('NOT ENOUGH DATA YET');
-                } else {
+                if(result.state !== sniff.State.NEED_MORE_DATA) {
                     clientSocket.removeListener('onreadable', onreadable);
                     switch(result.state) {
                         case sniff.State.HAS_SNI:
-                            console.log(`SNI: ${result.hostname}`);
+                            // console.log(`SNI: ${result.hostname}`);
                             passthru();
                             break;
                         case sniff.State.NO_SNI:
+                            console.log(`NO SNI!!!`);
                             passthru();
                             break;
                         case sniff.State.NOT_TLS:
+                            // console.log(`NOT TLS!!`);
+                            // console.log(full.toString('utf8'));
                             passthru();
                             break;
                     }
@@ -135,4 +151,93 @@ export class Proxy extends events.EventEmitter implements IService {
             clientSocket.on('readable', onreadable);
         });
     };
+
+    // TODO: This does nothing!!!
+    private _ugpradeHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
+        this.proxyWS(request, clientSocket, head);
+    }
+
+    private proxyWS(req: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
+        // TODO: what about a WS request without a Host: header?
+        // TODO: could we use the CONNECT thingy to get the header?
+        clientSocket.pause();
+        let url = getRequestUrl(req);
+        console.log(`websocket: ${url}`);
+        var ptosHeaders: { [k: string]: string } = {};
+        var ctopHeaders = req.headers;
+        for (var key in ctopHeaders) {
+            if (key.indexOf('sec-websocket') !== 0) {
+                ptosHeaders[key] = ctopHeaders[key];
+            }
+        }
+        let options = {
+            url: url,
+            // agent: false,
+            headers: ptosHeaders
+        };
+
+        // TODO: how to read messages from clientSocket and then forward -> ws?
+
+        let ws = new WebSocket(url, options);
+        ws.on('open', () => {
+            console.log('PROXY WEB SOCKET OPENED!!');
+            clientSocket.resume();
+            ws.on('message', (data: Buffer, flags: any) => {
+                console.log(data);
+                console.log(flags);
+            });
+            ws.on('close', () => {
+                console.log('PROXY WEB SOCKET CLOSED');
+                clientSocket.end();
+            });
+        });
+        ws.on('error', (e: any) => {
+            // TODO: forward to upstream error handler?
+
+            clientSocket.end();
+        });
+    }
+
+    /*
+    // Basic web socket proxying to start with...
+    private _makeProxyToServerWebSocket() {
+        // pause the client's socket
+
+        // Get the options from the
+        var url;
+        if (ctx.clientToProxyWebSocket.upgradeReq.url == "" || /^\//.test(ctx.clientToProxyWebSocket.upgradeReq.url)) {
+            var hostPort = Proxy.parseHostAndPort(ctx.clientToProxyWebSocket.upgradeReq);
+            url = (ctx.isSSL ? "wss" : "ws") + "://" + hostPort.host + (hostPort.port ? ":"
+                    + hostPort.port : "") + ctx.clientToProxyWebSocket.upgradeReq.url;
+        } else {
+            url = ctx.clientToProxyWebSocket.upgradeReq.url;
+        }
+        var ptosHeaders = {};
+        var ctopHeaders = ctx.clientToProxyWebSocket.upgradeReq.headers;
+        for (var key in ctopHeaders) {
+            if (key.indexOf('sec-websocket') !== 0) {
+                ptosHeaders[key] = ctopHeaders[key];
+            }
+        }
+        ctx.proxyToServerWebSocketOptions = {
+            url: url,
+            agent: false,
+            headers: ptosHeaders
+        };
+
+        proxyToServerWebSocket = new WebSocket(ctx.proxyToServerWebSocketOptions.url, ctx.proxyToServerWebSocketOptions);
+        proxyToServerWebSocket.on('message', self._onWebSocketMessage.bind(self, ctx));
+        proxyToServerWebSocket.on('error', self._onWebSocketError.bind(self, ctx));
+        proxyToServerWebSocket.on('close', self._onWebSocketClose.bind(self, ctx, true));
+        proxyToServerWebSocket.on('open', function() {
+            ctx.clientToProxyWebSocket.resume();
+        });
+
+
+    }
+    */
+
+    private _onWebSocketServerConnect() {
+        console.log('on web socket server connect!!!');
+    }
 }

@@ -14,6 +14,11 @@ export interface Options {
     password?: string;
 }
 
+interface SniffResult {
+    cn: string;
+    san: string;
+}
+
 export class CertificateGenerator {
     caKey: CertDataBlob;
     caCert: CertDataBlob;
@@ -46,11 +51,28 @@ export class CertificateGenerator {
         }
         return this.ctxCache.get(commonName);
     }
-    sniffCertificate(hostname: string): Promise<tls.SecureContext> {
+    async sniffCertificate(hostname: string): Promise<tls.SecureContext> {
         // Create a quick tls connection to the specified host/port combo
         // and get the certificate.
         return new Promise<tls.SecureContext>((resolve, reject) => {
             reject(new Error('Not implemented, sorry :('));
+        });
+    }
+
+    /* tslint:disable:no-unused-variable */
+    // WIP
+    private sniffServerCertificate(hostname: string, port: number): Promise<SniffResult> {
+        return new Promise<SniffResult>((resolve, reject) => {
+            let conn = tls.connect(port, hostname);
+            conn.on('secureConnect', () => {
+                let cert = conn.getPeerCertificate();
+                resolve({
+                    cn: cert.subject.CN,
+                    san: cert.subjectaltname
+                });
+                conn.end();
+            });
+            conn.on('error', (e: any) => reject(e));
         });
     }
 }

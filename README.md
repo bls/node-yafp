@@ -65,5 +65,13 @@ Ideas
 Credits
 -------
 
-* Thanks to https://github.com/runk/node-thin 
+* Thanks to https://github.com/runk/node-thin for inspiration and original code
+* TLS/SNI detection from: https://github.com/dlundquist/sniproxy/
+
+TODO
+----
+
+* WebSocket proxying
+* Certificate sniffing
+* WebSocket proxying through an upstream proxy
 
