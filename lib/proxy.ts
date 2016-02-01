@@ -14,6 +14,9 @@ import { CertificateGenerator } from './certgen';
 import { IService, Service, ServiceGroup } from '@sane/service';
 import * as sniff from './sniff';
 
+/* tslint:disable:no-unused-variable */
+/* TODO: REMOVE */
+
 export interface ProxyOptions {
     strictSSL?: boolean;
     proxy?: string;
@@ -71,11 +74,14 @@ export class Proxy extends events.EventEmitter implements IService {
         let httpsServer = https.createServer(<any> tlsOptions, requestHandler);
 
         // WEBSOCKETS
-        //httpServer.addListener('upgrade', this._ugpradeHandler.bind(this));
-        // httpsServer.addListener('upgrade', this._ugpradeHandler.bind(this));
+        httpServer.addListener('upgrade', this._upgradeHandler.bind(this));
+        httpsServer.addListener('upgrade', this._upgradeHandler.bind(this));
 
         let wsServer = new WebSocket.Server({ server: httpServer });
         wsServer.on('connection', this._onWebSocketServerConnect.bind(this, false)); // TODO
+
+        let wssServer = new WebSocket.Server({ server: <any> httpsServer });
+        wssServer.on('connection', this._onWebSocketServerConnect.bind(this, true)); // TODO
 
         // Wrap in services for startup / shutdown
         this.services = new ServiceGroup([
@@ -107,6 +113,8 @@ export class Proxy extends events.EventEmitter implements IService {
             clientSocket.pipe(proxySocket);
 
             proxySocket.on('error', (err: any) => {
+                console.log('PROXY SOCKET ERROR!!!');
+                console.log(err.stack);
                 clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
                 clientSocket.end();
             });
@@ -137,8 +145,10 @@ export class Proxy extends events.EventEmitter implements IService {
                             passthru();
                             break;
                         case sniff.State.NOT_TLS:
-                            // console.log(`NOT TLS!!`);
-                            // console.log(full.toString('utf8'));
+                            // TODO: If it's not a secure web socket, need to have the proxy
+                            // connection go back to our insecure server.
+                            console.log(`NOT TLS!!`);
+                            console.log(full.toString('utf8'));
                             passthru();
                             break;
                     }
@@ -152,21 +162,18 @@ export class Proxy extends events.EventEmitter implements IService {
         });
     };
 
-    // TODO: This does nothing!!!
-    private _ugpradeHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
-        this.proxyWS(request, clientSocket, head);
-    }
-
-    private proxyWS(req: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
-        // TODO: what about a WS request without a Host: header?
-        // TODO: could we use the CONNECT thingy to get the header?
-        clientSocket.pause();
+    private _onWebSocketServerConnect(isSecure: boolean, clientWS: WebSocket) {
+        console.log('on web socket server connect!!!');
+        // clientWS.pause();
+        let req = clientWS.upgradeReq;
         let url = getRequestUrl(req);
         console.log(`websocket: ${url}`);
         var ptosHeaders: { [k: string]: string } = {};
         var ctopHeaders = req.headers;
         for (var key in ctopHeaders) {
             if (key.indexOf('sec-websocket') !== 0) {
+                console.log(key);
+                console.log(ctopHeaders[key]);
                 ptosHeaders[key] = ctopHeaders[key];
             }
         }
@@ -175,69 +182,47 @@ export class Proxy extends events.EventEmitter implements IService {
             // agent: false,
             headers: ptosHeaders
         };
-
-        // TODO: how to read messages from clientSocket and then forward -> ws?
-
         let ws = new WebSocket(url, options);
         ws.on('open', () => {
-            console.log('PROXY WEB SOCKET OPENED!!');
-            clientSocket.resume();
+            // clientWS.resume();
+            clientWS.on('message', (data: Buffer, flags: any) => {
+                console.log('client -> server');
+                ws.send(data); // TODO: CB?
+                console.log(data);
+                console.log(flags);
+            });
+            clientWS.on('error', (e: any) => {
+                console.log('CLIENTWS ERROR:');
+                console.log(e.stack);
+            });
+            clientWS.on('close', (e: any) => {
+                console.log('CLIENTWS CLOSE...');
+                ws.close();
+            });
             ws.on('message', (data: Buffer, flags: any) => {
+                console.log('server -> client');
+                clientWS.send(data);
                 console.log(data);
                 console.log(flags);
             });
             ws.on('close', () => {
                 console.log('PROXY WEB SOCKET CLOSED');
-                clientSocket.end();
+                clientWS.close();
             });
         });
         ws.on('error', (e: any) => {
-            // TODO: forward to upstream error handler?
-
-            clientSocket.end();
+            console.log('WS ERROR:');
+            console.log(e.stack);
+            clientWS.close();
         });
     }
 
-    /*
-    // Basic web socket proxying to start with...
-    private _makeProxyToServerWebSocket() {
-        // pause the client's socket
-
-        // Get the options from the
-        var url;
-        if (ctx.clientToProxyWebSocket.upgradeReq.url == "" || /^\//.test(ctx.clientToProxyWebSocket.upgradeReq.url)) {
-            var hostPort = Proxy.parseHostAndPort(ctx.clientToProxyWebSocket.upgradeReq);
-            url = (ctx.isSSL ? "wss" : "ws") + "://" + hostPort.host + (hostPort.port ? ":"
-                    + hostPort.port : "") + ctx.clientToProxyWebSocket.upgradeReq.url;
-        } else {
-            url = ctx.clientToProxyWebSocket.upgradeReq.url;
-        }
-        var ptosHeaders = {};
-        var ctopHeaders = ctx.clientToProxyWebSocket.upgradeReq.headers;
-        for (var key in ctopHeaders) {
-            if (key.indexOf('sec-websocket') !== 0) {
-                ptosHeaders[key] = ctopHeaders[key];
-            }
-        }
-        ctx.proxyToServerWebSocketOptions = {
-            url: url,
-            agent: false,
-            headers: ptosHeaders
-        };
-
-        proxyToServerWebSocket = new WebSocket(ctx.proxyToServerWebSocketOptions.url, ctx.proxyToServerWebSocketOptions);
-        proxyToServerWebSocket.on('message', self._onWebSocketMessage.bind(self, ctx));
-        proxyToServerWebSocket.on('error', self._onWebSocketError.bind(self, ctx));
-        proxyToServerWebSocket.on('close', self._onWebSocketClose.bind(self, ctx, true));
-        proxyToServerWebSocket.on('open', function() {
-            ctx.clientToProxyWebSocket.resume();
-        });
+    private _upgradeHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
+        console.log('SAW UPGRADE...');
+        let url = getRequestUrl(request);
+        console.log(`websocket: ${url}`);
 
 
-    }
-    */
-
-    private _onWebSocketServerConnect() {
-        console.log('on web socket server connect!!!');
+        // console.log(request);
     }
 }
