@@ -8,6 +8,7 @@ import * as assert from 'assert';
 import { PassthroughStream } from './stream-adaptor';
 import { BufferFilter, StreamFilter, FileFilter, FilterChain } from './filter-chain';
 import { randomString } from './util';
+let headerCaseNormalizer: any = require('header-case-normalizer');
 
 export type ProxyRequestHandler = (ctx: RequestContext) => void;
 
@@ -31,7 +32,11 @@ function createProxyRequest(req: http.IncomingMessage, opts?: RequestOptions): r
     let filteredHeaders: { [k: string]: string } = {};
     Object.keys(req.headers).forEach((k: string) => {
         if(excludeHeaders.indexOf(k) === -1) {
-            filteredHeaders[k] = req.headers[k];
+            let nk = headerCaseNormalizer(k); // TODO: HACK
+            // Handle header-case of non-standard headers.
+            // TODO: Use raw headers of request instead? That way we perfectly preserve (hopefully...)
+            // NOTE: We also need to ensure that headers get copied out of the response properly(!)
+            filteredHeaders[nk] = req.headers[k];
         }
     });
 

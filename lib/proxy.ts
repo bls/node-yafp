@@ -4,7 +4,6 @@ import * as http from 'http';
 import * as https from 'https';
 import * as net from 'net';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import * as events from 'events';
 import * as tls from 'tls';
@@ -13,6 +12,7 @@ import { ProxyEngine, ProxyRequestHandler, getRequestUrl } from './engine';
 import { CertificateGenerator } from './certgen';
 import { IService, Service, ServiceGroup } from '@sane/service';
 import * as sniff from './sniff';
+let headerCaseNormalizer: any = require('header-case-normalizer');
 
 /* tslint:disable:no-unused-variable */
 /* TODO: REMOVE */
@@ -36,7 +36,6 @@ export class Proxy extends events.EventEmitter implements IService {
         super();
         this.engine = new ProxyEngine();
         this.opts = opts || { port: 30000 };
-        this.socket = os.tmpdir() + '/proxy.' + process.pid + '.sock';
 
         this.engine.on('error', (e: any) => this.emit('error', e));
         let requestHandler = (req: http.IncomingMessage, res: http.ServerResponse): void => {
@@ -59,9 +58,6 @@ export class Proxy extends events.EventEmitter implements IService {
             cert = fs.readFileSync(certFile, 'utf8'),
             certGen = new CertificateGenerator({ caKey: key, caCert: cert });
 
-        if (fs.existsSync(this.socket)) {
-            fs.unlinkSync(this.socket);
-        }
         let tlsOptions = {
             key: key,
             cert: cert,
@@ -74,19 +70,19 @@ export class Proxy extends events.EventEmitter implements IService {
         let httpsServer = https.createServer(<any> tlsOptions, requestHandler);
 
         // WEBSOCKETS
-        httpServer.addListener('upgrade', this._upgradeHandler.bind(this));
-        httpsServer.addListener('upgrade', this._upgradeHandler.bind(this));
+        // httpServer.addListener('upgrade', this._upgradeHandler.bind(this));
+        // httpsServer.addListener('upgrade', this._upgradeHandler.bind(this));
 
         let wsServer = new WebSocket.Server({ server: httpServer });
-        wsServer.on('connection', this._onWebSocketServerConnect.bind(this, false)); // TODO
+        wsServer.on('connection', this._onWebSocketServerConnect.bind(this, false));
 
         let wssServer = new WebSocket.Server({ server: <any> httpsServer });
-        wssServer.on('connection', this._onWebSocketServerConnect.bind(this, true)); // TODO
+        wssServer.on('connection', this._onWebSocketServerConnect.bind(this, true));
 
         // Wrap in services for startup / shutdown
         this.services = new ServiceGroup([
             new Service(httpServer, { port: this.opts.port }),
-            new Service(httpsServer, { path: this.socket })
+            new Service(httpsServer, { port: this.opts.port + 1 })
         ]);
     }
     async start(): Promise<void> {
@@ -107,18 +103,20 @@ export class Proxy extends events.EventEmitter implements IService {
             streamHead: Buffer[] = [head];
 
         // Proxy from client -> server
-        function passthru() {
-            streamHead.forEach((b: Buffer) => proxySocket.write(b));
-            proxySocket.pipe(clientSocket);
-            clientSocket.pipe(proxySocket);
+        function passthru(port: number) {
+            proxySocket.connect(port, '127.0.0.1', () => {
+                streamHead.forEach((b: Buffer) => proxySocket.write(b));
+                proxySocket.pipe(clientSocket);
+                clientSocket.pipe(proxySocket);
 
-            proxySocket.on('error', (err: any) => {
-                console.log('PROXY SOCKET ERROR!!!');
-                console.log(err.stack);
-                clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
-                clientSocket.end();
+                proxySocket.on('error', (err: any) => {
+                    console.log('PROXY SOCKET ERROR!!!');
+                    console.log(err.stack);
+                    clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
+                    clientSocket.end();
+                });
+                clientSocket.on('error', (err: any) => proxySocket.end());
             });
-            clientSocket.on('error', (err: any) => proxySocket.end());
         }
 
         // We sniff the start of the CONNECT data stream to distinguish between 3 cases:
@@ -126,6 +124,9 @@ export class Proxy extends events.EventEmitter implements IService {
         // 2) TLS without SNI -> Need to perform certificate sniffing
         // 3) Not TLS -> Process as a WebSocket connection
         // TODO: consider detecting websockets manually; see if we can passthru arbitrary data streams?
+
+        let httpPort = this.opts.port,
+            httpsPort = this.opts.port + 1;
 
         function onreadable() {
             let buf = clientSocket.read();
@@ -137,57 +138,79 @@ export class Proxy extends events.EventEmitter implements IService {
                     clientSocket.removeListener('onreadable', onreadable);
                     switch(result.state) {
                         case sniff.State.HAS_SNI:
-                            // console.log(`SNI: ${result.hostname}`);
-                            passthru();
+                            passthru(httpsPort);
                             break;
                         case sniff.State.NO_SNI:
-                            console.log(`NO SNI!!!`);
-                            passthru();
+                            passthru(httpsPort);
                             break;
                         case sniff.State.NOT_TLS:
-                            // TODO: If it's not a secure web socket, need to have the proxy
-                            // connection go back to our insecure server.
                             console.log(`NOT TLS!!`);
-                            console.log(full.toString('utf8'));
-                            passthru();
+                            // console.log(full.toString('utf8'));
+                            passthru(httpPort);
                             break;
                     }
                 }
             }
         }
 
-        proxySocket.connect(this.socket, () => {
-            clientSocket.write(`HTTP/${httpVersion} 200 Connection established\r\n\r\n`);
-            clientSocket.on('readable', onreadable);
-        });
+        clientSocket.write(`HTTP/${httpVersion} 200 Connection established\r\n\r\n`);
+        clientSocket.on('readable', onreadable);
     };
 
     private _onWebSocketServerConnect(isSecure: boolean, clientWS: WebSocket) {
-        console.log('on web socket server connect!!!');
-        // clientWS.pause();
+        // console.log('on web socket server connect!!!');
+        clientWS.pause();
+        // console.log(clientWS.upgradeReq.url);
+        console.log(`upgradeREQ URL: ${clientWS.upgradeReq.url}`);
+        let TESTZZZ = getRequestUrl(clientWS.upgradeReq);
+        console.log(`TEST: ${TESTZZZ}`);
         let req = clientWS.upgradeReq;
-        let url = getRequestUrl(req);
+
+        // let z = req.headers['host'].split(':')[1];
+        // if(z === '443') {
+            // HACK HACK FORCE SECURE???  AGAR.IO BREAKS W/OUT THIS?
+            // isSecure = true;
+        // }
+
+        let httpUrl = getRequestUrl(req),
+            // suffix = httpUrl.split(':')[1],
+            suffix = req.headers['host'], // TODO!!!
+            url = (isSecure ? 'wss' : 'ws') + '://' + suffix + req.url;
         console.log(`websocket: ${url}`);
         var ptosHeaders: { [k: string]: string } = {};
         var ctopHeaders = req.headers;
-        for (var key in ctopHeaders) {
-            if (key.indexOf('sec-websocket') !== 0) {
-                console.log(key);
-                console.log(ctopHeaders[key]);
-                ptosHeaders[key] = ctopHeaders[key];
+
+        // Hmmm, seems like we need working sec-websocket stuff.
+        //
+        // Access-Control-Allow-Origin: *
+        // Access-Control-Expose-Headers: BLAH BLAH.
+        //     For this to work, we need to snoop the upgrade response.
+        //
+
+        console.log(`WS VERSION: ${ctopHeaders['sec-websocket-version']}`);
+        for (let key in ctopHeaders) {
+            if(key.indexOf('sec-websocket') === 0) {
+                console.log(`DROPPED: ${key} -> ${ctopHeaders[key]}`);
+            } else {
+                let k = headerCaseNormalizer(key);
+                console.log(`${k} -> ${ctopHeaders[key]}`);
+                ptosHeaders[k] = ctopHeaders[key];
             }
         }
         let options = {
             url: url,
             // agent: false,
-            headers: ptosHeaders
+            rejectUnauthorized: false,  // TODO: OPTIONAL?
+            headers: ptosHeaders,
+            // ^ Above improves compatilbity...
         };
         let ws = new WebSocket(url, options);
         ws.on('open', () => {
-            // clientWS.resume();
+            clientWS.resume();
             clientWS.on('message', (data: Buffer, flags: any) => {
                 console.log('client -> server');
-                ws.send(data); // TODO: CB?
+                // ws.send(data, { binary: flags.binary, mask: flags.masked }); // TODO: CB?
+                ws.send(data, { binary: flags.binary }); // TODO: CB?
                 console.log(data);
                 console.log(flags);
             });
@@ -201,7 +224,7 @@ export class Proxy extends events.EventEmitter implements IService {
             });
             ws.on('message', (data: Buffer, flags: any) => {
                 console.log('server -> client');
-                clientWS.send(data);
+                clientWS.send(data, { binary: flags.binary, mask: flags.masked });
                 console.log(data);
                 console.log(flags);
             });
@@ -215,14 +238,17 @@ export class Proxy extends events.EventEmitter implements IService {
             console.log(e.stack);
             clientWS.close();
         });
-    }
+        // DEBUGGING: CHECK OUT THE SERVER RESPONSE...
 
-    private _upgradeHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
-        console.log('SAW UPGRADE...');
-        let url = getRequestUrl(request);
-        console.log(`websocket: ${url}`);
-
-
-        // console.log(request);
+        let fuuu = (res: http.IncomingMessage) => {
+            console.log('DEBUG FOR UPGRADE:');
+            // console.log(res);
+            for(let k in res.headers) {
+                if(true) {
+                    console.log(`${k}: ${res.headers[k]}`);
+                }
+            }
+        };
+        ws.on('fnord', <any> fuuu);
     }
 }
