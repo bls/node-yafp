@@ -28,6 +28,9 @@
   "author": "Blair Strang <blair.strang@gmail.com>",
   "homepage": "https://github.com/bls/",
   "license": "MIT",
+  "engines":{
+     "node": "^4.0.0"
+  },
   "devDependencies": {
     "body-parser": "^1.14.1",
     "express": "^4.13.3",

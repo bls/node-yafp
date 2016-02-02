@@ -11,8 +11,13 @@ YAFP is a forwarding proxy (set it as your proxy in the browser) for various hac
 * Only pay for what you use: if you use stream transforms, no buffering will occur
 * SSL support via [SNI](https://en.wikipedia.org/wiki/Server_Name_Indication "Server Name Indication")
 * Can chain to an upstream proxy (e.g. Burp Proxy)
+* Supports ws:// and wss:// WebSockets.
 * Transparently handles chunked encoding, can decompress requests and responses with middleware
 * Strongly typed, with TypeScript definitions
+
+## Requirements
+
+* Requires node.js >= 4.0.0
 
 ## Install
 
@@ -71,7 +76,6 @@ Credits
 TODO
 ----
 
-* WebSocket proxying
 * Certificate sniffing
 * WebSocket proxying through an upstream proxy
 
