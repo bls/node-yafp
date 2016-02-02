@@ -1,5 +1,5 @@
 
-import { RequestContext } from '../engine';
+import { RequestContext } from '../http';
 
 // TODO: this is not really working ><
 export function nocache(ctx: RequestContext) {

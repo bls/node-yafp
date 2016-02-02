@@ -1,4 +1,4 @@
-// Low level proxy logic
+// Proxy HTTP requests
 
 import * as http from 'http';
 import * as url from 'url';
@@ -52,7 +52,7 @@ function createProxyRequest(req: http.IncomingMessage, opts?: RequestOptions): r
     return request(reqOpts);
 }
 
-export class ProxyEngine extends events.EventEmitter {
+export class HttpHandler extends events.EventEmitter {
     handlers: ProxyRequestHandler[] = [];
 
     constructor() {

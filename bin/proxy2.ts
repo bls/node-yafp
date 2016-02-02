@@ -1,7 +1,7 @@
 
 import * as http from 'http';
 import { Proxy } from '../lib/proxy';
-import { RequestContext } from '../lib/engine';
+import { RequestContext } from '../lib/http';
 import { decompressor } from '../lib/middleware/decompressor';
 // import { nocache } from '../lib/middleware/nocache';
 

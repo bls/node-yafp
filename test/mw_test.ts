@@ -4,7 +4,7 @@ import { mochaAsync } from './helpers/mochaAsync';
 import { TestServer } from './helpers/TestServer';
 import { requestp } from './helpers/request';
 import { Proxy } from '../lib/proxy';
-import { RequestContext } from '../lib/engine';
+import { RequestContext } from '../lib/http';
 import { ServiceGroup } from '@sane/service';
 import { decompressor } from '../lib/middleware/decompressor';
 import { promiseCallback } from '../lib/util';
