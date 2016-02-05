@@ -4,6 +4,7 @@ import * as bodyParser from 'body-parser';
 import * as http from 'http';
 import * as https from 'https';
 import * as zlib from 'zlib';
+import * as WebSocket from 'ws';
 import { IService, Service, ServiceGroup } from '@sane/service';
 
 export interface Options {
@@ -58,11 +59,37 @@ export class TestServer implements IService {
             res.send(content);
         });
 
-        let httpService = new Service(http.createServer(this.app), { port: options.httpPort }),
-            httpsService = new Service(https.createServer(this.httpsOpts, this.app), { port: options.httpsPort });
+        let httpServer = http.createServer(this.app),
+            httpsServer = https.createServer(this.httpsOpts, this.app);
+
+        let wsServer = new WebSocket.Server({ server: httpServer }),
+            wssServer = new WebSocket.Server({ server: <any> httpsServer });
+
+        let httpService = new Service(httpServer, { port: options.httpPort }),
+            httpsService = new Service(httpsServer, { port: options.httpsPort });
 
         this.services = new ServiceGroup([httpService, httpsService]);
+
+        function handleWS(ws: WebSocket) {
+            // let location = url.parse(ws.upgradeReq.url, true);
+            // you might use location.query.access_token to authenticate or share sessions
+            // or ws.upgradeReq.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
+            console.log(ws.upgradeReq.url);
+            // TODO: blast -> sends 1000 messages really fast
+            // TODO: binary test -> sends binary data
+            // TODO: text test -> echos text
+
+            ws.on('message', function incoming(message) {
+                console.log('received: %s', message);
+            });
+
+            ws.send('something');
+        }
+        wsServer.on('connection', handleWS);
+        wssServer.on('connection', handleWS);
+
     }
+
     start(): Promise<void> {
         return this.services.start();
     }

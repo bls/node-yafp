@@ -68,14 +68,10 @@ export class Proxy extends events.EventEmitter implements IService {
         };
         let httpsServer = https.createServer(<any> tlsOptions, requestHandler);
 
-        // WEBSOCKETS
-        // httpServer.addListener('upgrade', this._upgradeHandler.bind(this));
-        // httpsServer.addListener('upgrade', this._upgradeHandler.bind(this));
+        let wsServer = new WebSocket.Server({ server: httpServer }),
+            wssServer = new WebSocket.Server({ server: <any> httpsServer });
 
-        let wsServer = new WebSocket.Server({ server: httpServer });
         wsServer.on('connection', this.wsHandler.handleConnect.bind(this, false));
-
-        let wssServer = new WebSocket.Server({ server: <any> httpsServer });
         wssServer.on('connection', this.wsHandler.handleConnect.bind(this, true));
 
         // Wrap in services for startup / shutdown
