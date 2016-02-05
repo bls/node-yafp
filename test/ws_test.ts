@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as fs from '@sane/fs';
-import { mochaAsync } from './helpers/mochaAsync';
+import { asyncTest } from './helpers/AsyncTest';
 import { TestServer } from './helpers/TestServer';
 import { requestp } from './helpers/request';
 import { Proxy } from '../lib/proxy';
@@ -15,7 +15,7 @@ async function sayHello(data: NodeJS.ReadableStream): Promise<NodeJS.ReadableStr
     return bufferToStream(new Buffer('hello there'));
 }
 
-describe('WebSocket support', function() {
+describe('WebSocket support', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
         services = new ServiceGroup([testServer, proxy]);
@@ -27,7 +27,7 @@ describe('WebSocket support', function() {
         proxy.clearHandlers();
     });
 
-    it('should work through the proxy', mochaAsync(async () => {
+    it('should work through the proxy', asyncTest(async () => {
         // let r = await requestp({
         //     proxy: 'http://localhost:30002',
         //    url: 'http://localhost:30000/test'

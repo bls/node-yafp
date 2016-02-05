@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as fs from '@sane/fs';
-import { mochaAsync } from './helpers/mochaAsync';
+import { asyncTest } from './helpers/AsyncTest';
 import { TestServer } from './helpers/TestServer';
 import { requestp } from './helpers/request';
 import { Proxy } from '../lib/proxy';
@@ -15,7 +15,7 @@ async function sayHello(data: NodeJS.ReadableStream): Promise<NodeJS.ReadableStr
     return bufferToStream(new Buffer('hello there'));
 }
 
-describe('middleware', function() {
+describe('middleware', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
         services = new ServiceGroup([testServer, proxy]);
@@ -27,7 +27,7 @@ describe('middleware', function() {
         proxy.clearHandlers();
     });
 
-    it('should support middleware', mochaAsync(async () => {
+    it('should support middleware', asyncTest(async () => {
         proxy.addHandler((ctx: RequestContext) => ctx.withResponseStream(sayHello));
         let r = await requestp({
             proxy: 'http://localhost:30002',
@@ -36,7 +36,7 @@ describe('middleware', function() {
         assert.equal(r.body, 'hello there');
     }));
 
-    it('should be able to decompress responses', mochaAsync(async () => {
+    it('should be able to decompress responses', asyncTest(async () => {
         proxy.addHandler(decompressor);
         proxy.addHandler((ctx: RequestContext) => {
             ctx.withResponseBuffer(async (data: Buffer): Promise<Buffer> => {
@@ -51,7 +51,7 @@ describe('middleware', function() {
         assert.equal(r.body, 'gzip is working');
     }));
 
-    it('should not crash on decompression errors', mochaAsync(async () => {
+    it('should not crash on decompression errors', asyncTest(async () => {
         let sawError = false;
         proxy.addHandler(decompressor);
         proxy.on('error', (e: any) => sawError = true);
@@ -64,16 +64,16 @@ describe('middleware', function() {
         assert.equal(r.body.indexOf('PROXY ERROR:'), 0);
     }));
 
-    it('should handle buffer transforms', mochaAsync(async () => {
+    it('should handle buffer transforms', asyncTest(async () => {
     }));
 
-    it('should handle file transforms', mochaAsync(async () => {
+    it('should handle file transforms', asyncTest(async () => {
     }));
 
-    it('should handle stream transforms', mochaAsync(async () => {
+    it('should handle stream transforms', asyncTest(async () => {
     }));
 
-    it('should handle multiple transforms', mochaAsync(async () => {
+    it('should handle multiple transforms', asyncTest(async () => {
         proxy.addHandler((ctx: RequestContext) => {
             ctx.withResponseStream(sayHello);
             ctx.withResponseFile(async (path: string): Promise<string> => {
@@ -95,7 +95,7 @@ describe('middleware', function() {
         assert.equal(r.body, 'from a buffer');
     }));
 
-    it('should handle broken request transforms', mochaAsync(async () => {
+    it('should handle broken request transforms', asyncTest(async () => {
         let sawError = false;
         proxy.on('error', (e: any) => sawError = true);
         proxy.addHandler(async (ctx: RequestContext) => {
@@ -112,7 +112,7 @@ describe('middleware', function() {
         assert.equal(sawError, true);
     }));
 
-    it('should handle broken response transforms', mochaAsync(async () => {
+    it('should handle broken response transforms', asyncTest(async () => {
         let sawError = false;
         proxy.on('error', (e: any) => sawError = true);
         proxy.addHandler(async (ctx: RequestContext) => {
