@@ -56,7 +56,6 @@ export class WsHandler extends events.EventEmitter {
                 ws.close();
             });
             ws.on('message', (data: Buffer, flags: any) => {
-                console.log(data);
                 clientWS.send(data, { binary: flags.binary, mask: flags.masked }); // TODO: CB
             });
             ws.on('close', () => {
