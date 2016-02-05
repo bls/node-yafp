@@ -12,11 +12,6 @@ let headerCaseNormalizer: any = require('header-case-normalizer');
 
 export type ProxyRequestHandler = (ctx: RequestContext) => void;
 
-interface RequestOptions {
-    proxy?: string;
-    strictSSL?: boolean;
-}
-
 export function getRequestUrl(req: http.IncomingMessage): string {
     let parsedUrl = url.parse(req.url),
         scheme = (<any> req).connection.encrypted ? 'https' : 'http',
@@ -25,7 +20,7 @@ export function getRequestUrl(req: http.IncomingMessage): string {
     return scheme + '://' + host + parsedUrl.path;
 }
 
-function createProxyRequest(req: http.IncomingMessage, opts?: RequestOptions): request.Request {
+function createProxyRequest(req: http.IncomingMessage, options?: HttpHandlerOptions): request.Request {
     let destUrl = getRequestUrl(req),
         excludeHeaders = ['proxy-connection'];
 
@@ -40,11 +35,11 @@ function createProxyRequest(req: http.IncomingMessage, opts?: RequestOptions): r
         }
     });
 
-    opts = opts || {};
+    options = options || {};
     let reqOpts = {
         url: destUrl,
-        strictSSL: opts.strictSSL,
-        proxy: opts.proxy,
+        strictSSL: options.strictSSL,
+        proxy: options.proxy,
         method: req.method,
         followRedirect: false,
         headers: filteredHeaders
@@ -52,10 +47,15 @@ function createProxyRequest(req: http.IncomingMessage, opts?: RequestOptions): r
     return request(reqOpts);
 }
 
+export interface HttpHandlerOptions {
+    proxy?: string;
+    strictSSL?: boolean;
+}
+
 export class HttpHandler extends events.EventEmitter {
     handlers: ProxyRequestHandler[] = [];
 
-    constructor() {
+    constructor(public options: HttpHandlerOptions) {
         super();
     }
     addHandler(h: ProxyRequestHandler) {
@@ -103,7 +103,6 @@ enum RequestState {
 }
 
 export class RequestContext extends events.EventEmitter {
-    url: string;
     id = randomString(8);
     private state = RequestState.START;
     private reqHandlers: MessageHandler[] = [];
@@ -111,9 +110,8 @@ export class RequestContext extends events.EventEmitter {
     private reqFilters = new FilterChain();
     private resFilters = new FilterChain();
 
-    constructor(url: string) {
+    constructor(public url: string) {
         super();
-        this.url = url;
         this.reqFilters.on('error', (e: any) => this.emit('error', e));
         this.resFilters.on('error', (e: any) => this.emit('error', e));
     }

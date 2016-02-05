@@ -15,13 +15,13 @@ async function sayHello(data: NodeJS.ReadableStream): Promise<NodeJS.ReadableStr
     return bufferToStream(new Buffer('hello there'));
 }
 
-describe('middleware', () => {
+describe('Middleware', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
         services = new ServiceGroup([testServer, proxy]);
 
-    beforeEach((done) => promiseCallback(services.start(), done));
-    afterEach((done) => promiseCallback(services.stop(), done));
+    before((done) => promiseCallback(services.start(), done));
+    after((done) => promiseCallback(services.stop(), done));
     beforeEach(() => {
         proxy.removeAllListeners('error');
         proxy.clearHandlers();

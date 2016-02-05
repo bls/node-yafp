@@ -2,10 +2,15 @@
 
 import * as WebSocket from 'ws';
 import * as events from 'events';
+import { httpOverHttp, httpsOverHttp } from 'tunnel-agent';
 import normalizeCase = require('header-case-normalizer');
 
+export interface Options {
+    proxy?: string;
+}
+
 export class WsHandler extends events.EventEmitter {
-    constructor() {
+    constructor(public options: Options) {
         super();
     }
 
@@ -23,20 +28,29 @@ export class WsHandler extends events.EventEmitter {
                 ptosHeaders[normalizeCase(key)] = ctopHeaders[key];
             }
         }
-        let options = {
+        let wsOptions: any = {
             url: url,
             rejectUnauthorized: false,  // TODO: MAKE AN OPTION
             headers: ptosHeaders,
         };
-        let ws = new WebSocket(url, options);
+        if(this.options.proxy) {
+            let factory = isSecure ? httpsOverHttp : httpOverHttp;
+            let agent = factory({ proxy: this.options.proxy });
+            wsOptions.agent = agent;
+        }
+        let ws = new WebSocket(url, wsOptions);
+        ws.on('error', (e: any) => {
+            this.emit(e);
+            clientWS.close();
+        });
+        clientWS.on('error', (e: any) => {
+            this.emit(e);
+            ws.close();
+        });
         ws.on('open', () => {
             clientWS.resume();
             clientWS.on('message', (data: Buffer, flags: any) => {
                 ws.send(data, { binary: flags.binary, mask: flags.masked }); // TODO: CB
-            });
-            clientWS.on('error', (e: any) => {
-                this.emit(e);
-                ws.close();
             });
             clientWS.on('close', (e: any) => {
                 ws.close();
@@ -48,10 +62,6 @@ export class WsHandler extends events.EventEmitter {
             ws.on('close', () => {
                 clientWS.close();
             });
-        });
-        ws.on('error', (e: any) => {
-            this.emit(e);
-            clientWS.close();
         });
     }
 }

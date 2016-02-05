@@ -23,18 +23,22 @@ export interface ProxyOptions {
     caKey?: string;
 }
 
+const defaultProxyOptions: ProxyOptions = {
+    port: 30000,
+    strictSSL: false
+};
+
 export class Proxy extends events.EventEmitter implements IService {
     httpHandler: HttpHandler;
     wsHandler: WsHandler;
-    opts: ProxyOptions;
-    socket: string;
+    options: ProxyOptions;
     services: ServiceGroup;
 
-    constructor(opts?: ProxyOptions) {
+    constructor(options?: ProxyOptions) {
         super();
-        this.httpHandler = new HttpHandler();
-        this.wsHandler = new WsHandler();
-        this.opts = opts || { port: 30000 };
+        this.options = options || defaultProxyOptions;
+        this.httpHandler = new HttpHandler(this.options);
+        this.wsHandler = new WsHandler(this.options);
 
         this.httpHandler.on('error', (e: any) => this.emit('error', e));
         let requestHandler = (req: http.IncomingMessage, res: http.ServerResponse): void => {
@@ -51,8 +55,8 @@ export class Proxy extends events.EventEmitter implements IService {
 
         // HTTPS
         let moduleDir = path.normalize(__dirname + '/../../'),
-            keyFile = this.opts.caKey || moduleDir + 'cert/dummy.key',
-            certFile = this.opts.caCert || moduleDir + 'cert/dummy.crt',
+            keyFile = this.options.caKey || moduleDir + 'cert/dummy.key',
+            certFile = this.options.caCert || moduleDir + 'cert/dummy.crt',
             key = fs.readFileSync(keyFile, 'utf8'),
             cert = fs.readFileSync(certFile, 'utf8'),
             certGen = new CertificateGenerator({ caKey: key, caCert: cert });
@@ -76,8 +80,8 @@ export class Proxy extends events.EventEmitter implements IService {
 
         // Wrap in services for startup / shutdown
         this.services = new ServiceGroup([
-            new Service(httpServer, { port: this.opts.port }),
-            new Service(httpsServer, { port: this.opts.port + 1 })
+            new Service(httpServer, { port: this.options.port }),
+            new Service(httpsServer, { port: this.options.port + 1 })
         ]);
     }
     async start(): Promise<void> {
@@ -120,8 +124,8 @@ export class Proxy extends events.EventEmitter implements IService {
         // 3) Not TLS -> Process as a WebSocket connection
         // TODO: consider detecting websockets manually; see if we can passthru arbitrary data streams?
 
-        let httpPort = this.opts.port,
-            httpsPort = this.opts.port + 1;
+        let httpPort = this.options.port,
+            httpsPort = this.options.port + 1;
 
         function onreadable() {
             let buf = clientSocket.read();

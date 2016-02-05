@@ -8,7 +8,7 @@ import { promiseCallback } from '../lib/util';
 
 const keepAliveValue = 'close'; // || 'keep-alive'
 
-describe('proxy', function() {
+describe('HTTP Proxy', function() {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
         services = new ServiceGroup([testServer, proxy]);

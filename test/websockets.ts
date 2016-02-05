@@ -11,7 +11,7 @@ import { promiseCallback } from '../lib/util';
 import { httpOverHttp, httpsOverHttp } from 'tunnel-agent';
 import * as WebSocket from 'ws';
 
-describe('WebSocket support', () => {
+describe('WebSocket proxy', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
         services = new ServiceGroup([testServer, proxy]);
