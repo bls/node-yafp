@@ -74,16 +74,26 @@ export class TestServer implements IService {
             // let location = url.parse(ws.upgradeReq.url, true);
             // you might use location.query.access_token to authenticate or share sessions
             // or ws.upgradeReq.headers.cookie (see http://stackoverflow.com/a/16395220/151312)
-            console.log(ws.upgradeReq.url);
-            // TODO: blast -> sends 1000 messages really fast
+            let path = ws.upgradeReq.url;
+            if(path === '/echo') {
+                ws.on('message', (msg) => {
+                    ws.send(msg);
+                });
+            } else if (path === '/blast') {
+                for (let i = 0; i < 1000; i++) {
+                    ws.send('STUFF!');
+                }
+            } else if (path === '/binary_echo') {
+                ws.on('message', (msg) => {
+                    ws.send(msg, {binary: true, mask: true});
+                });
+            } else if (path === '/header_test') {
+                ws.send(JSON.stringify(ws.upgradeReq.headers));
+                ws.close();
+            } else {
+                ws.close();
+            }
             // TODO: binary test -> sends binary data
-            // TODO: text test -> echos text
-
-            ws.on('message', function incoming(message) {
-                console.log('received: %s', message);
-            });
-
-            ws.send('something');
         }
         wsServer.on('connection', handleWS);
         wssServer.on('connection', handleWS);

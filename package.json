@@ -28,16 +28,17 @@
   "author": "Blair Strang <blair.strang@gmail.com>",
   "homepage": "https://github.com/bls/",
   "license": "MIT",
-  "engines":{
-     "node": "^4.0.0"
+  "engines": {
+    "node": "^4.0.0"
   },
   "devDependencies": {
     "body-parser": "^1.14.1",
     "express": "^4.13.3",
     "jimp": "^0.2.21",
     "mocha": "^2.2.4",
-    "typescript": "1.8.0-dev.20160125",
-    "tslint": "^2.5.0-beta"
+    "tslint": "^2.5.0-beta",
+    "tunnel-agent": "^0.4.2",
+    "typescript": "^1.8.0"
   },
   "dependencies": {
     "@sane/fs": "^1.0.2",

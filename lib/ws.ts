@@ -19,8 +19,8 @@ export class WsHandler extends events.EventEmitter {
         var ctopHeaders = req.headers;
 
         for (let key in ctopHeaders) {
-            if(ctopHeaders.hasOwnProperty(key) && key.indexOf('sec-websocket') !== 0) {
-                ptosHeaders[key] = ctopHeaders[normalizeCase(key)];
+            if(key.indexOf('sec-websocket') !== 0) {
+                ptosHeaders[normalizeCase(key)] = ctopHeaders[key];
             }
         }
         let options = {
@@ -42,6 +42,7 @@ export class WsHandler extends events.EventEmitter {
                 ws.close();
             });
             ws.on('message', (data: Buffer, flags: any) => {
+                console.log(data);
                 clientWS.send(data, { binary: flags.binary, mask: flags.masked }); // TODO: CB
             });
             ws.on('close', () => {
