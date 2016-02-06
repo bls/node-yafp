@@ -11,7 +11,7 @@ YAFP is a forwarding proxy (set it as your proxy in the browser) for various hac
 * Only pay for what you use: if you use stream transforms, no buffering will occur
 * SSL support via [SNI](https://en.wikipedia.org/wiki/Server_Name_Indication "Server Name Indication")
 * Can chain to an upstream proxy (e.g. Burp Proxy)
-* Supports ws:// and wss:// WebSockets.
+* Supports ws:// and wss:// WebSockets and will tunnel them through upstream proxies as well
 * Transparently handles chunked encoding, can decompress requests and responses with middleware
 * Strongly typed, with TypeScript definitions
 
@@ -76,10 +76,11 @@ Credits
 * Thanks to https://github.com/runk/node-thin for inspiration and original code
 * TLS/SNI detection from: https://github.com/dlundquist/sniproxy/
 
-TODO
-----
+TODO / NOTES / IDEAS
+--------------------
 
 * Certificate sniffing
 * Add support for upstream proxy-auth
 * NTLM proxy auth?  
 * Maybe use proxy-agent, node-proxying-agent or http-proxy-agent instead of tunnel-agent?
+
