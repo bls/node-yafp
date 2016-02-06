@@ -118,7 +118,7 @@ export class Proxy extends events.EventEmitter implements IService {
             });
         }
 
-        // We sniff the start of the CONNECT data stream to distinguish between 3 cases:
+        // We sniff the start of the CONNECT data stream to determine how to handle it.
         // 1) TLS with SNI -> Can simply forward to HTTPS server
         // 2) TLS without SNI -> Need to perform certificate sniffing
         // 3) Not TLS -> Process as a WebSocket connection
@@ -137,15 +137,13 @@ export class Proxy extends events.EventEmitter implements IService {
                     clientSocket.removeListener('onreadable', onreadable);
                     switch(result.state) {
                         case sniff.State.HAS_SNI:
-                            passthru(httpsPort);
+                            passthru(httpsPort);  // Pass to HTTPS server
                             break;
                         case sniff.State.NO_SNI:
-                            passthru(httpsPort);
+                            passthru(httpsPort);  // TODO: sniff
                             break;
                         case sniff.State.NOT_TLS:
-                            console.log(`NOT TLS!!`);
-                            // console.log(full.toString('utf8'));
-                            passthru(httpPort);
+                            passthru(httpPort);   // Treat as WebSocket
                             break;
                     }
                 }

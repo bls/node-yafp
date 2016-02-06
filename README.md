@@ -34,10 +34,15 @@ Simple response modification looks something like this (in typescript):
 import * as http from 'http';
 import * as yafp from 'yafp';
 
-// Perform string replacement 
-async function doTextReplacement(buf: Buffer): Promise<Buffer> {    
+async function textReplace(buf: Buffer): Promise<Buffer> {
     let s = buf.toString('utf8').replace(/ the /gi, ' UNICORN ');
     return new Buffer(s, 'utf8');
+}
+
+function isHtml(resp: http.IncomingMessage): boolean {
+    let htmlContentTypes = ['text/html', 'text/xhtml'],
+        contentType = (resp.headers['content-type'] || '').toLowerCase().split(';')[0];
+    return htmlContentTypes.indexOf(contentType) !== -1
 }
 
 async function main() {
@@ -46,10 +51,8 @@ async function main() {
     proxy.addHandler(yafp.middleware.decompressor);
     proxy.addHandler((ctx: yafp.RequestContext) => {
         ctx.withResponse((resp: http.IncomingMessage) => {
-            let toModify = ['text/html', 'text/xhtml'], // Just modify HTML
-                contentType = (resp.headers['content-type'] || '').toLowerCase().split(';')[0];
-            if(toModify.indexOf(contentType) !== -1) {
-                ctx.withResponseBuffer(doTextReplacement); // Run string replacement
+            if(isHtml(resp)) {
+                ctx.withResponseBuffer(textReplace);
             }
         });
     });
@@ -77,5 +80,4 @@ TODO
 ----
 
 * Certificate sniffing
-* WebSocket proxying through an upstream proxy
 
