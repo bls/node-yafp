@@ -3,7 +3,6 @@
 // Ported as directly as possible to TypeScript.
 
 /* tslint:disable:no-bitwise */
-/* tslint:disable:no-unused-variable */
 
 export enum State {
     NEED_MORE_DATA = 0,
