@@ -26,8 +26,10 @@ function pexec(cmd: string): Promise<ExecResult> {
 
 let listenPort = 6666,
     proxy = new yafp.Proxy({port: listenPort});
+
 proxy.addHandler(yafp.middleware.nocache);
 proxy.addHandler(yafp.middleware.decompressor);
+
 proxy.addHandler((ctx) => {
     ctx.withResponseFile(async (path: string): Promise<string> => {
         let r = await pexec(`/usr/bin/file -b ${path}`);
@@ -35,7 +37,6 @@ proxy.addHandler((ctx) => {
         return path;
     });
 });
+
 proxy.on('error', (e: any) => { console.log(e.stack); });
-proxy.start().then(() => {
-    console.log(`Proxy listening on port: ${listenPort}`);
-});
+proxy.start().then(() => console.log(`Proxy listening on port: ${listenPort}`));

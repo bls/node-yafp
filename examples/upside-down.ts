@@ -49,7 +49,6 @@ proxy.addHandler((ctx: yafp.RequestContext): void => {
     });
 });
 proxy.on('error', (e: any) => { console.log(e.stack); });
-proxy.start().then(() => {
-    console.log(`Proxy listening on port: ${listenPort}`);
-});
+proxy.start().then(() => console.log(`Proxy listening on port: ${listenPort}`));
+
 
