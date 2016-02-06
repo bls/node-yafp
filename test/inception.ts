@@ -4,7 +4,7 @@ import { TestServer } from './helpers/TestServer';
 import { requestp } from './helpers/request';
 import { asyncTest } from './helpers/AsyncTest';
 import { Proxy } from '../lib/proxy';
-import { RequestContext } from '../lib/http';
+import { proxyAgent } from '../lib/proxy-agent';
 import { ServiceGroup } from '@sane/service';
 import { promiseCallback } from '../lib/util';
 import { httpOverHttp, httpsOverHttp } from 'tunnel-agent';
@@ -16,15 +16,17 @@ describe('Upstream proxy support', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy1 = new Proxy({port: 30002, host: 'localhost'}),
         proxy2 = new Proxy({port: 30004, host: 'localhost', proxy: 'http://localhost:30002'}),
-        services = new ServiceGroup([testServer, proxy1, proxy2]);
+        proxy3 = new Proxy({port: 30006, host: 'localhost', proxy: 'https://localhost:30003'}),
+        proxies = [proxy1, proxy2, proxy3],
+        services = new ServiceGroup([testServer, proxy1, proxy2, proxy3]);
 
     before((done) => promiseCallback(services.start(), done));
     after((done) => promiseCallback(services.stop(), done));
     beforeEach(() => {
-        proxy1.removeAllListeners('error');
-        proxy1.clearHandlers();
-        proxy2.removeAllListeners('error');
-        proxy2.clearHandlers();
+        for(let p of proxies) {
+            p.removeAllListeners('error');
+            p.clearHandlers();
+        }
     });
 
     async function testHTTP(url: string, proxy: string) {
@@ -46,35 +48,52 @@ describe('Upstream proxy support', () => {
         });
     }
 
-    function testWS(url: string, proxy: string): Promise<void> {
+    function testWS(wsUrl: string, proxy: string): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            let agent = httpOverHttp({proxy: proxy}),
-                ws = new WebSocket('ws://127.0.0.1:30000/echo'),
+            let agent = proxyAgent(wsUrl, proxy),
                 greeting = 'hello there!';
+            let ws = new WebSocket(wsUrl, { agent: agent });
             ws.on('open', () => {
                 ws.send(greeting);
-                ws.on('message', (msg) => {
+                ws.on('message', (msg: any) => {
                     assert.equal(msg, greeting);
                     ws.close();
                     resolve();
                 });
-            }).on('error', (err:any) => reject(err));
+            }).on('error', (err: any) => reject(err));
         });
     }
 
-    it('should work for HTTP GET via an upstream HTTP proxy', asyncTest(async () => {
-        await testHTTP('http://localhost:30000/test?foo=bar', 'http://localhost:30004');
+    it('should support HTTP GET through upstream HTTP proxy', asyncTest(async () => {
+        await testHTTP('http://localhost:30000/test?foo=bar', 'http://localhost:30004/');
     }));
 
-    it('should work for HTTPS GET via an upstream HTTP proxy', asyncTest(async () => {
-        await testHTTP('https://localhost:30001/test?foo=bar', 'http://localhost:30004');
+    it('should support HTTPS GET through upstream HTTP proxy', asyncTest(async () => {
+        await testHTTP('https://localhost:30001/test?foo=bar', 'http://localhost:30004/');
     }));
 
-    it('should handle ws:// protocol through an upstream HTTP proxy', asyncTest(async () => {
-        await testWS('ws://localhost:30000/echo', 'http://localhost:30004');
+    it('should support WS protocol through upstream HTTP proxy', asyncTest(async () => {
+        await testWS('ws://localhost:30000/echo', 'http://localhost:30004/');
     }));
 
-    it('should handle wss:// protocol through an upstream HTTP proxy', asyncTest(async () => {
-        await testWS('ws://localhost:30000/echo', 'http://localhost:30004');
+    it('should support WSS protocol through upstream HTTP proxy', asyncTest(async () => {
+        await testWS('wss://localhost:30001/echo', 'http://localhost:30004/');
     }));
+
+    it('should support HTTP GET through  upstream HTTPS proxy', asyncTest(async () => {
+        await testHTTP('http://localhost:30000/test?foo=bar', 'http://localhost:30006');
+    }));
+
+    it('should support HTTPS GET through upstream HTTPS proxy', asyncTest(async () => {
+        await testHTTP('https://localhost:30001/test?foo=bar', 'http://localhost:30006');
+    }));
+
+    it('should support WS protocol through upstream HTTPS proxy', asyncTest(async () => {
+        await testWS('ws://localhost:30000/echo', 'http://localhost:30006');
+    }));
+
+    it('should support WSS protocol through upstream HTTPS proxy', asyncTest(async () => {
+        await testWS('wss://localhost:30001/echo', 'http://localhost:30006');
+    }));
+
 });

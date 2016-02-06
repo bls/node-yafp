@@ -51,7 +51,6 @@ export class Proxy extends events.EventEmitter implements IService {
 
         // HTTP
         let httpServer = http.createServer(requestHandler);
-        httpServer.addListener('connect', this._connectHandler.bind(this));
 
         // HTTPS
         let moduleDir = path.normalize(__dirname + '/../../'),
@@ -77,6 +76,10 @@ export class Proxy extends events.EventEmitter implements IService {
 
         wsServer.on('connection', this.wsHandler.handleConnect.bind(this, false));
         wssServer.on('connection', this.wsHandler.handleConnect.bind(this, true));
+
+        // Handle CONNECT
+        httpServer.addListener('connect', this._connectHandler.bind(this));
+        httpsServer.addListener('connect', this._connectHandler.bind(this));
 
         // Wrap in services for startup / shutdown
         this.services = new ServiceGroup([
@@ -109,10 +112,9 @@ export class Proxy extends events.EventEmitter implements IService {
                 clientSocket.pipe(proxySocket);
 
                 proxySocket.on('error', (err: any) => {
-                    console.log('PROXY SOCKET ERROR!!!');
-                    console.log(err.stack);
                     clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
                     clientSocket.end();
+                    this.emit(err);
                 });
                 clientSocket.on('error', (err: any) => proxySocket.end());
             });
@@ -143,7 +145,7 @@ export class Proxy extends events.EventEmitter implements IService {
                             passthru(httpsPort);  // TODO: sniff
                             break;
                         case sniff.State.NOT_TLS:
-                            passthru(httpPort);   // Treat as WebSocket
+                            passthru(httpPort);
                             break;
                     }
                 }

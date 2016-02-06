@@ -2,7 +2,7 @@
 
 import * as WebSocket from 'ws';
 import * as events from 'events';
-import { httpOverHttp, httpsOverHttp } from 'tunnel-agent';
+import { proxyAgent } from './proxy-agent';
 import normalizeCase = require('header-case-normalizer');
 
 export interface Options {
@@ -35,8 +35,7 @@ export class WsHandler extends events.EventEmitter {
             headers: ptosHeaders,
         };
         if(this.options.proxy) {
-            let factory = isSecure ? httpsOverHttp : httpOverHttp;
-            wsOptions.agent = factory({ proxy: this.options.proxy });
+            wsOptions.agent = proxyAgent(url, this.options.proxy);
         }
         let ws = new WebSocket(url, wsOptions);
         ws.on('error', (e: any) => {

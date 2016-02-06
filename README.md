@@ -80,4 +80,6 @@ TODO
 ----
 
 * Certificate sniffing
-
+* Add support for upstream proxy-auth
+* NTLM proxy auth?  
+* Maybe use proxy-agent, node-proxying-agent or http-proxy-agent instead of tunnel-agent?
