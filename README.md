@@ -65,11 +65,6 @@ main();
 
 ```
 
-Ideas
------
-
-* Interesting to test https://badssl.com/ -> would be great to repro this testing in unit tests.
-
 Credits
 -------
 
@@ -79,6 +74,7 @@ Credits
 TODO / NOTES / IDEAS
 --------------------
 
+* Interesting to test https://badssl.com/ -> would be great to repro this testing in unit tests.
 * Certificate sniffing
 * Add support for upstream proxy-auth
 * NTLM proxy auth?  
