@@ -17,6 +17,8 @@ describe('Upstream proxy support', () => {
         proxy1 = new Proxy({port: 30002, host: 'localhost'}),
         proxy2 = new Proxy({port: 30004, host: 'localhost', proxy: 'http://localhost:30002'}),
         proxy3 = new Proxy({port: 30006, host: 'localhost', proxy: 'https://localhost:30003'}),
+        upstreamHTTP = 'http://localhost:30004',
+        upstreamHTTPS = 'http://localhost:30006',
         proxies = [proxy1, proxy2, proxy3],
         services = new ServiceGroup([testServer, proxy1, proxy2, proxy3]);
 
@@ -65,35 +67,35 @@ describe('Upstream proxy support', () => {
     }
 
     it('should support HTTP GET through upstream HTTP proxy', asyncTest(async () => {
-        await testHTTP('http://localhost:30000/test?foo=bar', 'http://localhost:30004/');
+        await testHTTP('http://localhost:30000/test?foo=bar', upstreamHTTP);
     }));
 
     it('should support HTTPS GET through upstream HTTP proxy', asyncTest(async () => {
-        await testHTTP('https://localhost:30001/test?foo=bar', 'http://localhost:30004/');
+        await testHTTP('https://localhost:30001/test?foo=bar', upstreamHTTP);
     }));
 
     it('should support WS protocol through upstream HTTP proxy', asyncTest(async () => {
-        await testWS('ws://localhost:30000/echo', 'http://localhost:30004/');
+        await testWS('ws://localhost:30000/echo', upstreamHTTP);
     }));
 
     it('should support WSS protocol through upstream HTTP proxy', asyncTest(async () => {
-        await testWS('wss://localhost:30001/echo', 'http://localhost:30004/');
+        await testWS('wss://localhost:30001/echo', upstreamHTTP);
     }));
 
     it('should support HTTP GET through  upstream HTTPS proxy', asyncTest(async () => {
-        await testHTTP('http://localhost:30000/test?foo=bar', 'http://localhost:30006');
+        await testHTTP('http://localhost:30000/test?foo=bar', upstreamHTTPS);
     }));
 
     it('should support HTTPS GET through upstream HTTPS proxy', asyncTest(async () => {
-        await testHTTP('https://localhost:30001/test?foo=bar', 'http://localhost:30006');
+        await testHTTP('https://localhost:30001/test?foo=bar', upstreamHTTPS);
     }));
 
     it('should support WS protocol through upstream HTTPS proxy', asyncTest(async () => {
-        await testWS('ws://localhost:30000/echo', 'http://localhost:30006');
+        await testWS('ws://localhost:30000/echo', upstreamHTTPS);
     }));
 
     it('should support WSS protocol through upstream HTTPS proxy', asyncTest(async () => {
-        await testWS('wss://localhost:30001/echo', 'http://localhost:30006');
+        await testWS('wss://localhost:30001/echo', upstreamHTTPS);
     }));
 
 });

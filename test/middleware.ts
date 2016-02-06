@@ -18,6 +18,7 @@ async function sayHello(data: NodeJS.ReadableStream): Promise<NodeJS.ReadableStr
 describe('Middleware', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
+        proxyUrl = 'http://localhost:30002',
         services = new ServiceGroup([testServer, proxy]);
 
     before((done) => promiseCallback(services.start(), done));
@@ -30,7 +31,7 @@ describe('Middleware', () => {
     it('should support middleware', asyncTest(async () => {
         proxy.addHandler((ctx: RequestContext) => ctx.withResponseStream(sayHello));
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/test'
         });
         assert.equal(r.body, 'hello there');
@@ -45,7 +46,7 @@ describe('Middleware', () => {
             });
         });
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/gzip-working'
         });
         assert.equal(r.body, 'gzip is working');
@@ -56,7 +57,7 @@ describe('Middleware', () => {
         proxy.addHandler(decompressor);
         proxy.on('error', (e: any) => sawError = true);
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/gzip-busted'
         });
         assert.equal(sawError, true);
@@ -89,7 +90,7 @@ describe('Middleware', () => {
             });
         });
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/test'
         });
         assert.equal(r.body, 'from a buffer');
@@ -104,7 +105,7 @@ describe('Middleware', () => {
             });
         });
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/test'
         });
         assert.equal(r.res.statusCode, 500);
@@ -121,7 +122,7 @@ describe('Middleware', () => {
             });
         });
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/test'
         });
         assert.equal(r.res.statusCode, 500);

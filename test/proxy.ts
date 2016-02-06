@@ -11,6 +11,7 @@ const keepAliveValue = 'close'; // || 'keep-alive'
 describe('HTTP Proxy', function() {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
         proxy = new Proxy({port: 30002, host: 'localhost'}),
+        proxyUrl = 'http://localhost:30002',
         services = new ServiceGroup([testServer, proxy]);
 
     before((done) => promiseCallback(services.start(), done));
@@ -18,7 +19,7 @@ describe('HTTP Proxy', function() {
 
     it('should work for HTTP GET methods', asyncTest(async () => {
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/test?foo=bar'
         });
         assert.deepEqual(r.body, {
@@ -38,7 +39,7 @@ describe('HTTP Proxy', function() {
         let r = await requestp({
             method: 'POST',
             form: { hello: 'world' },
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/test?foo=bar'
         });
         assert.deepEqual(r.body, {
@@ -58,7 +59,7 @@ describe('HTTP Proxy', function() {
 
     it('should work for HTTPS GET methods', asyncTest(async () => {
         let r = await requestp({
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'https://localhost:30001/test?foo=bar'
         });
         assert.deepEqual(r.body, {
@@ -78,7 +79,7 @@ describe('HTTP Proxy', function() {
         let r = await requestp({
             method: 'POST',
             form: {hello: 'world'},
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'https://localhost:30001/test?foo=bar'
         });
         assert.deepEqual(r.body, {
@@ -100,7 +101,7 @@ describe('HTTP Proxy', function() {
         let r = await requestp({
             method: 'GET',
             form: { hello: 'world' },
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'https://localhost:30001/not-found'
         });
         assert.deepEqual(r.body, { status: 404 });
@@ -110,7 +111,7 @@ describe('HTTP Proxy', function() {
     it('should not follow HTTP redirects', asyncTest(async () => {
         let r = await requestp({
             method: 'GET',
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://localhost:30000/redirect',
             followRedirect: false
         });
@@ -124,7 +125,7 @@ describe('HTTP Proxy', function() {
         });
         let r = await requestp({
             method: 'GET',
-            proxy: 'http://localhost:30002',
+            proxy: proxyUrl,
             url: 'http://aklsjdokdjsflksdjfoisdjfoijsdf.com/'
         });
         assert.equal(r.res.statusCode, 500);
