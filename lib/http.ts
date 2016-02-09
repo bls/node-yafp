@@ -21,18 +21,14 @@ export function getRequestUrl(req: http.IncomingMessage): string {
 }
 
 function createProxyRequest(req: http.IncomingMessage, options?: HttpHandlerOptions): request.Request {
-    let destUrl = getRequestUrl(req),
-        excludeHeaders = ['proxy-connection'];
+    let destUrl = getRequestUrl(req);
 
     let filteredHeaders: { [k: string]: string } = {};
+    delete req.headers['proxy-connection'];
+
     Object.keys(req.headers).forEach((k: string) => {
-        if(excludeHeaders.indexOf(k) === -1) {
-            let nk = headerCaseNormalizer(k); // TODO: HACK
-            // Handle header-case of non-standard headers.
-            // TODO: Use raw headers of request instead? That way we perfectly preserve (hopefully...)
-            // NOTE: We also need to ensure that headers get copied out of the response properly(!)
-            filteredHeaders[nk] = req.headers[k];
-        }
+        let nk = headerCaseNormalizer(k); // TODO: HACK
+        filteredHeaders[nk] = req.headers[k];
     });
 
     options = options || {};
