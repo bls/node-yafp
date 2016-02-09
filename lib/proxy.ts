@@ -102,7 +102,8 @@ export class Proxy extends events.EventEmitter implements IService {
     private _connectHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
         let httpVersion = request.httpVersion,
             proxySocket = new net.Socket(),
-            streamHead: Buffer[] = [head];
+            streamHead: Buffer[] = [head],
+            ee = this;
 
         // Proxy from client -> server
         function passthru(port: number) {
@@ -114,7 +115,7 @@ export class Proxy extends events.EventEmitter implements IService {
                 proxySocket.on('error', (err: any) => {
                     clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
                     clientSocket.end();
-                    this.emit(err);
+                    ee.emit(err);
                 });
                 clientSocket.on('error', (err: any) => proxySocket.end());
             });
