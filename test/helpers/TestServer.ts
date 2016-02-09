@@ -53,6 +53,12 @@ export class TestServer implements IService {
             res.send('this is not valid gzipped content!');
         });
 
+        this.app.get('/custom-headers', function(req, res) {
+            res.header('X-Custom', 'value');
+            res.header('X-Multi', ['value1', 'value2']);
+            res.send('TEST');
+        });
+
         this.app.get('/gzip-working', function(req, res) {
             res.header('content-encoding', 'gzip');
             let content = zlib.gzipSync(new Buffer('gzip is working'));

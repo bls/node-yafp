@@ -131,4 +131,27 @@ describe('HTTP Proxy', function() {
         assert.equal(r.res.statusCode, 500);
         assert.equal(sawError, true);
     }));
+
+    it('should handle multiple request headers', asyncTest(async () => {
+        let r = await requestp({
+            method: 'GET',
+            url: 'https://localhost:30001/test',
+            proxy: proxyUrl,
+            headers: {
+                'X-Foo': ['bar', 'baz']
+            }
+        });
+        assert.deepEqual(r.body, {
+            protocol: 'https',
+            method: 'GET',
+            body: {},
+            query: {},
+            headers: {
+                'accept': 'application/json',
+                'connection': keepAliveValue,
+                'host': 'localhost:30001',
+                'x-foo': 'bar, baz'
+            }
+        });
+    }));
 });

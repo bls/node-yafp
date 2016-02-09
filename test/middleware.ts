@@ -113,6 +113,38 @@ describe('Middleware', () => {
         assert.equal(sawError, true);
     }));
 
+    it('should be possible to change request headers', asyncTest(async () => {
+        proxy.addHandler((ctx) => {
+            ctx.withRequest((req) => {
+                delete req.headers['x-foo'];
+                req.headers['x-bar'] = 'yep';
+            });
+        });
+        let r = await requestp({
+            proxy: proxyUrl,
+            url: 'http://localhost:30000/test',
+            headers: { 'x-foo': 'deleteme' }
+        });
+        assert.ok(typeof r.body.headers['x-foo'] === 'undefined');
+        assert.equal(r.body.headers['x-bar'], 'yep');
+    }));
+
+    it('should be possible to change response headers', asyncTest(async () => {
+        proxy.addHandler((ctx) => {
+            ctx.withResponse((resp) => {
+                delete resp.headers['x-custom'];
+                resp.headers['x-added'] = 'sure';
+            });
+        });
+        let r = await requestp({
+            proxy: proxyUrl,
+            url: 'http://localhost:30000/custom-headers'
+        });
+        assert.ok(typeof r.res.headers['x-custom'] === 'undefined');
+        assert.equal(r.res.headers['x-added'], 'sure');
+        assert.equal(r.res.headers['x-multi'], 'value1, value2');
+    }));
+
     it('should handle broken response transforms', asyncTest(async () => {
         let sawError = false;
         proxy.on('error', (e: any) => sawError = true);
