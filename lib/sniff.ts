@@ -1,4 +1,4 @@
-// Sniff CONNECT data to detect TLS + SNI
+// Sniff CONNECT data to detect TLS + SNI, TLS w/out SNI or WebSocket traffic
 // ClientHello parsing Logic from: https://github.com/dlundquist/sniproxy/blob/master/src/tls.c @ 6fa5157
 // Ported as directly as possible to TypeScript.
 
@@ -183,8 +183,7 @@ function parse_server_name_extension(data: Uint8Array): SniffResult {
                     hostname: String.fromCharCode.apply(null, namebuf)
                 };
             default:
-                // Ignore unknown SNI extension name type
-                // throw new Error(`Unknown server name extension name type: ${data[pos]}`);
+                // Ignore unknown SNI name type
         }
         pos += 3 + len;
     }
