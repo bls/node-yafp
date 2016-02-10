@@ -4,7 +4,7 @@ import { asyncTest } from './helpers/AsyncTest';
 import { TestServer } from './helpers/TestServer';
 import { requestp } from './helpers/request';
 import { Proxy } from '../lib/proxy';
-import { RequestContext } from '../lib/http';
+import { RequestContext } from '../lib/http-handler';
 import { ServiceGroup } from '@sane/service';
 import { decompressor } from '../lib/middleware/decompressor';
 import { serveCert } from '../lib/middleware/serve-cert';
@@ -163,16 +163,24 @@ describe('Middleware', () => {
         assert.equal(sawError, true);
     }));
 
-    it('should serve certificate at http://yafp/cert with serveCert mw', asyncTest(async () => {
+    async function testGetCert(url: string) {
         proxy.addHandler(serveCert);
         let r = await requestp({
             proxy: proxyUrl,
-            url: 'http://yafp/cert'
+            url: url
         });
         assert.equal(r.res.statusCode, 200);
         assert.equal(r.res.statusMessage, 'OK');
         assert.equal(r.res.headers['content-type'], 'application/x-x509-ca-cert');
         assert.ok(r.body.toString().indexOf('BEGIN CERTIFICATE') !== -1);
         assert.ok(r.body.toString().indexOf('END CERTIFICATE') !== -1);
+    }
+
+    it('should serve certificate at http://yafp/cert with serveCert mw', asyncTest(async () => {
+        await testGetCert('http://yafp/cert');
+    }));
+
+    it('should serve certificate at https://yafp/cert with serveCert mw', asyncTest(async () => {
+        await testGetCert('https://yafp/cert');
     }));
 });

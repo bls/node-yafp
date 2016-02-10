@@ -1,12 +1,13 @@
 
-import { RequestContext } from '../http';
+import { RequestContext } from '../http-handler';
 import * as http from 'http';
 import * as fs from '@sane/fs';
 
 export function serveCert(ctx: RequestContext) {
     ctx.withRequest((req: http.IncomingMessage) => {
-        if(ctx.url === 'http://yafp/cert') {
-            req.headers['host'] = `127.0.0.1:${ctx.options.port}`;
+        if(ctx.url.match('https?://yafp/cert$')) {
+            let destPort = ctx.isSecure ? ctx.options.port + 1 : ctx.options.port;
+            req.headers['host'] = `127.0.0.1:${destPort}`;
             req.url = '/';
             ctx.withResponse((res) => {
                 res.statusCode = 200;

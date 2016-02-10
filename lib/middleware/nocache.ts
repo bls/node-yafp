@@ -1,7 +1,6 @@
 
-import { RequestContext } from '../http';
+import { RequestContext } from '../http-handler';
 
-// TODO: this is not really working ><
 export function nocache(ctx: RequestContext) {
     ctx.withRequest((req) => {
         delete req.headers['if-modified-since'];

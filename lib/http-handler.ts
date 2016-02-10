@@ -105,7 +105,7 @@ export class HttpHandler extends events.EventEmitter {
             return;
         }
         // Handle a proxy request
-        let ctx = new RequestContext(getRequestUrl(req), this.options);
+        let ctx = new RequestContext(getRequestUrl(req), isSecure(req), this.options);
         ctx.on('error', (e: any) => this.handleError(e, res));
         try {
             this.handlers.forEach(h => h(ctx));
@@ -150,7 +150,7 @@ export class RequestContext extends events.EventEmitter {
     private reqFilters = new FilterChain();
     private resFilters = new FilterChain();
 
-    constructor(public url: string, public options: ProxyOptions) {
+    constructor(public url: string, public isSecure: boolean, public options: ProxyOptions) {
         super();
         this.reqFilters.on('error', (e: any) => this.emit('error', e));
         this.resFilters.on('error', (e: any) => this.emit('error', e));

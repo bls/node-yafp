@@ -1,7 +1,7 @@
 
 import * as zlib from 'zlib';
 import * as http from 'http';
-import { RequestContext } from '../http';
+import { RequestContext } from '../http-handler';
 
 function decompressorFor(response: http.IncomingMessage): NodeJS.ReadWriteStream {
     let contentEncoding = response.headers['content-encoding'];
