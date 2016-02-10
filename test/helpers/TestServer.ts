@@ -55,7 +55,7 @@ export class TestServer implements IService {
 
         this.app.get('/custom-headers', function(req, res) {
             res.header('X-Custom', 'value');
-            res.header('X-Multi', ['value1', 'value2']);
+            res.header('X-Multi', <any> ['value1', 'value2']);
             res.send('TEST');
         });
 

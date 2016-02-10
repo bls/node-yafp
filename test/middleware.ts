@@ -96,23 +96,6 @@ describe('Middleware', () => {
         assert.equal(r.body, 'from a buffer');
     }));
 
-    it('should handle broken request transforms', asyncTest(async () => {
-        let sawError = false;
-        proxy.on('error', (e: any) => sawError = true);
-        proxy.addHandler(async (ctx: RequestContext) => {
-            ctx.withRequestStream(async (strm): Promise<NodeJS.ReadableStream> => {
-                throw new Error('oops');
-            });
-        });
-        let r = await requestp({
-            proxy: proxyUrl,
-            url: 'http://localhost:30000/test'
-        });
-        assert.equal(r.res.statusCode, 500);
-        assert.ok(r.body.startsWith('PROXY ERROR:'));
-        assert.equal(sawError, true);
-    }));
-
     it('should be possible to change request headers', asyncTest(async () => {
         proxy.addHandler((ctx) => {
             ctx.withRequest((req) => {
@@ -145,6 +128,23 @@ describe('Middleware', () => {
         assert.equal(r.res.headers['x-multi'], 'value1, value2');
     }));
 
+    it('should handle broken request transforms', asyncTest(async () => {
+        let sawError = false;
+        proxy.on('error', (e: any) => sawError = true);
+        proxy.addHandler(async (ctx: RequestContext) => {
+            ctx.withRequestStream(async (strm): Promise<NodeJS.ReadableStream> => {
+                throw new Error('oops');
+            });
+        });
+        let r = await requestp({
+            proxy: proxyUrl,
+            url: 'http://localhost:30000/test'
+        });
+        assert.equal(r.res.statusCode, 500);
+        assert.ok(r.body.startsWith('PROXY ERROR:'));
+        assert.equal(sawError, true);
+    }));
+    
     it('should handle broken response transforms', asyncTest(async () => {
         let sawError = false;
         proxy.on('error', (e: any) => sawError = true);
