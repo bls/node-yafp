@@ -4,6 +4,8 @@
 
 YAFP is a forwarding proxy (set it as your proxy in the browser) for various hacking purposes. 
 
+Good for MITM (man in the middle) attacks, game hacking, instrumenting JavaScript and HTTP debugging.
+
 ## Features
 
 * Modern promise-based middleware syntax, designed for ES7 async/await
