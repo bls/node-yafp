@@ -33,7 +33,7 @@ function splitHostHeader(h: string, secure: boolean): SplitHostHeader {
     return {
         hostname: parts[0],
         port: parseInt(parts[1], 10)
-    }
+    };
 }
 
 export function getRequestUrl(req: http.IncomingMessage): string {
