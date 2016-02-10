@@ -144,7 +144,7 @@ describe('Middleware', () => {
         assert.ok(r.body.startsWith('PROXY ERROR:'));
         assert.equal(sawError, true);
     }));
-    
+
     it('should handle broken response transforms', asyncTest(async () => {
         let sawError = false;
         proxy.on('error', (e: any) => sawError = true);

@@ -81,4 +81,13 @@ TODO / NOTES / IDEAS
 * Add support for upstream proxy-auth
 * NTLM proxy auth?  
 * Maybe use proxy-agent, node-proxying-agent or http-proxy-agent instead of tunnel-agent?
+* Ensure SSLv2 works, by enabling insecure protocols for the https server
+    * Srsly, how to test that though? Hardly anything supports it anymore...
+* Something like a "conntrack" table, enabling debug context across CONNECT 
+* Test that server name is correctly recovered from the SNI server name if it's 
+  not present in a host header or whatnot. Basically:
+  openssl s_client -connect localhost:6667 -servername www.google.com
+  GET / HTTP/1.0 -> should return page.
+* Ohhh looks like we need a connection table; what about non HTTPs connect?
 
+  

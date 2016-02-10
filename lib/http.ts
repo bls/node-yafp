@@ -13,9 +13,18 @@ let headerCaseNormalizer: any = require('header-case-normalizer');
 export type ProxyRequestHandler = (ctx: RequestContext) => void;
 
 export function getRequestUrl(req: http.IncomingMessage): string {
+    // TODO: need to be able to figure out server name from SNI in here...
+    // That would be like, uh, super helpful :)
+
     let parsedUrl = url.parse(req.url),
         scheme = (<any> req).connection.encrypted ? 'https' : 'http',
         host = req.headers['host'] || parsedUrl.host;
+
+    // Assume we should get this out of SNI...
+    // TODO: Have a good think about this logic
+    if(!host) {
+        host = (<any> req).socket.servername;
+    }
 
     return scheme + '://' + host + parsedUrl.path;
 }

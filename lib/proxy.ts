@@ -13,6 +13,7 @@ import { WsHandler } from './ws';
 import { CertificateGenerator } from './certgen';
 import { IService, Service, ServiceGroup } from '@sane/service';
 import * as sniff from './sniff';
+import { relay, tlsRelay } from './relay';
 
 export interface ProxyOptions {
     strictSSL?: boolean;
@@ -101,25 +102,8 @@ export class Proxy extends events.EventEmitter implements IService {
     }
     private _connectHandler(request: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
         let httpVersion = request.httpVersion,
-            proxySocket = new net.Socket(),
             streamHead: Buffer[] = [head],
             ee = this;
-
-        // Proxy from client -> server
-        function passthru(port: number) {
-            proxySocket.connect(port, '127.0.0.1', () => {
-                streamHead.forEach((b: Buffer) => proxySocket.write(b));
-                proxySocket.pipe(clientSocket);
-                clientSocket.pipe(proxySocket);
-
-                proxySocket.on('error', (err: any) => {
-                    clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
-                    clientSocket.end();
-                    ee.emit(err);
-                });
-                clientSocket.on('error', (err: any) => proxySocket.end());
-            });
-        }
 
         // We sniff the start of the CONNECT data stream to determine how to handle it.
         // 1) TLS with SNI -> Can simply forward to HTTPS server
@@ -132,25 +116,47 @@ export class Proxy extends events.EventEmitter implements IService {
 
         function onreadable() {
             let buf = clientSocket.read();
-            if(buf !== null) {
-                streamHead.push(buf);
-                let full = Buffer.concat(streamHead);
-                let result = sniff.detectTLS(full);
-                if(result.state !== sniff.State.NEED_MORE_DATA) {
-                    clientSocket.removeListener('onreadable', onreadable);
-                    switch(result.state) {
-                        case sniff.State.HAS_SNI:
-                            passthru(httpsPort);  // Pass to HTTPS server
-                            break;
-                        case sniff.State.NO_SNI:
-                            passthru(httpsPort);  // TODO: sniff
-                            break;
-                        case sniff.State.NOT_TLS:
-                            passthru(httpPort);
-                            break;
-                    }
-                }
+            if(buf === null) {
+                return;
             }
+            streamHead.push(buf);
+            let data = Buffer.concat(streamHead);
+            let result = sniff.detectTLS(data);
+            if(result.state === sniff.State.NEED_MORE_DATA) {
+                return; // TODO: timeout
+            }
+
+            // OK this still doesn't fix the case where we do a CONNECT and the client wants
+            // a "different" cert somehow (e.g. expected teh right SAN etc), but should be good
+            // enough for now. OTOH, if we want cert sniffing, we can now implement this assuming
+            // SNI works.
+            clientSocket.removeListener('onreadable', onreadable);
+            let proxySocket: net.Socket;
+            switch(result.state) {
+                case sniff.State.HAS_SNI:
+                    // Since we have SNI, we can pass the raw data stream straight
+                    // to our HTTPS port.
+                    proxySocket = relay(clientSocket, '127.0.0.1', httpsPort, data);
+                    break;
+                case sniff.State.NO_SNI:
+                    // We terminate the TLS connection and proxy via a new TLS connection;
+                    // this allows us to add SNI for our HTTPS server.
+                    proxySocket = tlsRelay(clientSocket, '127.0.0.1', httpsPort, result.hostname, data);
+                    break;
+                case sniff.State.NOT_TLS:
+                    proxySocket = relay(clientSocket, '127.0.0.1', httpPort, data); // Pass to HTTP server
+                    break;
+                // TODO: default case?
+            }
+            proxySocket.on('error', (err: any) => {
+                clientSocket.write(`HTTP/${httpVersion} 500 Connection error\r\n\r\n`);
+                clientSocket.end();
+                ee.emit(err);
+            });
+            clientSocket.on('error', (err: any) => {
+                proxySocket.end();
+                ee.emit(err);
+            });
         }
 
         clientSocket.write(`HTTP/${httpVersion} 200 Connection established\r\n\r\n`);

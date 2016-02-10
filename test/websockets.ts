@@ -90,7 +90,4 @@ describe('WebSocket proxy', () => {
             });
         }).on('error', (err: any) => done(err));
     });
-
-    // TODO: verify that headers from 'ugprade' request are passed to the server properly
-
 });
