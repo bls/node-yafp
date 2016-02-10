@@ -17,6 +17,25 @@ function isSecure(msg: http.IncomingMessage): boolean {
     return (<any> msg).connection.encrypted;
 }
 
+interface SplitHostHeader {
+    hostname: string;
+    port: number;
+}
+
+function splitHostHeader(h: string, secure: boolean): SplitHostHeader {
+    if(typeof h !== 'string' || !h) {
+        throw new Error(`Invalid host header: ${h}`);
+    }
+    if(h.indexOf(':') === -1) {
+        h += secure ? '443' : '80';
+    }
+    let parts = h.split(':');
+    return {
+        hostname: parts[0],
+        port: parseInt(parts[1], 10)
+    }
+}
+
 export function getRequestUrl(req: http.IncomingMessage): string {
     // TODO: need to be able to figure out server name from SNI in here...
     // That would be like, uh, super helpful :)
@@ -70,21 +89,14 @@ export class HttpHandler extends events.EventEmitter {
         this.handlers = [];
     }
     private isInternalRequest(req: http.IncomingMessage): boolean {
-        let internalHosts = ['127.0.0.1', 'localhost', '::1'],
-            h = req.headers['host'],
+        const internalHosts = ['127.0.0.1', 'localhost', '::1'];
+        let hh = req.headers['host'],
             ourPort = isSecure(req) ? this.options.port + 1: this.options.port;
-
-        if(!h) {
-            return false; // TODO: handle with no Host header (e.g. when CONNECT).
+        if(!hh) {
+            return false;
         }
-        if(h.indexOf(':') === -1) {
-            h += isSecure(req) ? '443' : '80';
-        }
-        let parts = h.split(':'),
-            reqHost = parts[0],
-            reqPort = parts[1];
-
-        return internalHosts.indexOf(reqHost) !== -1 && parseInt(reqPort, 10) === ourPort;
+        let sh = splitHostHeader(hh, isSecure(req));
+        return internalHosts.indexOf(sh.hostname) !== -1 && sh.port === ourPort;
     }
     async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
         if(this.isInternalRequest(req)) {
