@@ -13,12 +13,16 @@ let headerCaseNormalizer: any = require('header-case-normalizer');
 
 export type ProxyRequestHandler = (ctx: RequestContext) => void;
 
+function isSecure(msg: http.IncomingMessage): boolean {
+    return (<any> msg).connection.encrypted;
+}
+
 export function getRequestUrl(req: http.IncomingMessage): string {
     // TODO: need to be able to figure out server name from SNI in here...
     // That would be like, uh, super helpful :)
 
     let parsedUrl = url.parse(req.url),
-        scheme = (<any> req).connection.encrypted ? 'https' : 'http',
+        scheme = isSecure(req) ? 'https' : 'http',
         host = req.headers['host'] || parsedUrl.host;
 
     // Assume we should get this out of SNI...
@@ -65,7 +69,22 @@ export class HttpHandler extends events.EventEmitter {
     clearHandlers() {
         this.handlers = [];
     }
+    private isInternalRequest(req: http.IncomingMessage): boolean {
+        let internalHosts = ['127.0.0.1', 'localhost', '::1'],
+            parts = (req.headers['host'] || ':').split(':'),
+            reqHost = parts[0],
+            reqPort = parts[1],
+            ourPort = isSecure(req) ? this.options.port + 1: this.options.port;
+
+            return internalHosts.indexOf(reqHost) !== -1 && parseInt(reqPort, 10) === ourPort;
+    }
     async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+        if(this.isInternalRequest(req)) {
+            // TODO: Maybe serve GUI here?
+            res.end();
+            return;
+        }
+        // Handle a proxy request
         let ctx = new RequestContext(getRequestUrl(req), this.options);
         ctx.on('error', (e: any) => this.handleError(e, res));
         try {
