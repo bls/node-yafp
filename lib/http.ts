@@ -71,12 +71,20 @@ export class HttpHandler extends events.EventEmitter {
     }
     private isInternalRequest(req: http.IncomingMessage): boolean {
         let internalHosts = ['127.0.0.1', 'localhost', '::1'],
-            parts = (req.headers['host'] || ':').split(':'),
-            reqHost = parts[0],
-            reqPort = parts[1],
+            h = req.headers['host'],
             ourPort = isSecure(req) ? this.options.port + 1: this.options.port;
 
-            return internalHosts.indexOf(reqHost) !== -1 && parseInt(reqPort, 10) === ourPort;
+        if(!h) {
+            return false; // TODO: handle with no Host header (e.g. when CONNECT).
+        }
+        if(h.indexOf(':') === -1) {
+            h += isSecure(req) ? '443' : '80';
+        }
+        let parts = h.split(':'),
+            reqHost = parts[0],
+            reqPort = parts[1];
+
+        return internalHosts.indexOf(reqHost) !== -1 && parseInt(reqPort, 10) === ourPort;
     }
     async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
         if(this.isInternalRequest(req)) {

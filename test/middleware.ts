@@ -7,6 +7,7 @@ import { Proxy } from '../lib/proxy';
 import { RequestContext } from '../lib/http';
 import { ServiceGroup } from '@sane/service';
 import { decompressor } from '../lib/middleware/decompressor';
+import { serveCert } from '../lib/middleware/serve-cert';
 import { promiseCallback } from '../lib/util';
 import { bufferToStream } from '../lib/stream-adaptor';
 
@@ -160,5 +161,18 @@ describe('Middleware', () => {
         assert.equal(r.res.statusCode, 500);
         assert.ok(r.body.startsWith('PROXY ERROR:'));
         assert.equal(sawError, true);
+    }));
+
+    it('should serve certificate at http://yafp/cert with serveCert mw', asyncTest(async () => {
+        proxy.addHandler(serveCert);
+        let r = await requestp({
+            proxy: proxyUrl,
+            url: 'http://yafp/cert'
+        });
+        assert.equal(r.res.statusCode, 200);
+        assert.equal(r.res.statusMessage, 'OK');
+        assert.equal(r.res.headers['content-type'], 'application/x-x509-ca-cert');
+        assert.ok(r.body.toString().indexOf('BEGIN CERTIFICATE') !== -1);
+        assert.ok(r.body.toString().indexOf('END CERTIFICATE') !== -1);
     }));
 });
