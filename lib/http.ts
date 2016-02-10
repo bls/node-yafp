@@ -8,6 +8,7 @@ import * as assert from 'assert';
 import { PassthroughStream } from './stream-adaptor';
 import { BufferFilter, StreamFilter, FileFilter, FilterChain } from './filter-chain';
 import { randomString } from './util';
+import { ProxyOptions } from './proxy-options';
 let headerCaseNormalizer: any = require('header-case-normalizer');
 
 export type ProxyRequestHandler = (ctx: RequestContext) => void;
@@ -29,7 +30,7 @@ export function getRequestUrl(req: http.IncomingMessage): string {
     return scheme + '://' + host + parsedUrl.path;
 }
 
-function createProxyRequest(req: http.IncomingMessage, options?: HttpHandlerOptions): request.Request {
+function createProxyRequest(req: http.IncomingMessage, options?: ProxyOptions): request.Request {
     let destUrl = getRequestUrl(req);
 
     let filteredHeaders: { [k: string]: string } = {};
@@ -52,15 +53,10 @@ function createProxyRequest(req: http.IncomingMessage, options?: HttpHandlerOpti
     return request(reqOpts);
 }
 
-export interface HttpHandlerOptions {
-    proxy?: string;
-    strictSSL?: boolean;
-}
-
 export class HttpHandler extends events.EventEmitter {
     handlers: ProxyRequestHandler[] = [];
 
-    constructor(public options: HttpHandlerOptions) {
+    constructor(public options: ProxyOptions) {
         super();
     }
     addHandler(h: ProxyRequestHandler) {
@@ -70,7 +66,7 @@ export class HttpHandler extends events.EventEmitter {
         this.handlers = [];
     }
     async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-        let ctx = new RequestContext(getRequestUrl(req));
+        let ctx = new RequestContext(getRequestUrl(req), this.options);
         ctx.on('error', (e: any) => this.handleError(e, res));
         try {
             this.handlers.forEach(h => h(ctx));
@@ -115,7 +111,7 @@ export class RequestContext extends events.EventEmitter {
     private reqFilters = new FilterChain();
     private resFilters = new FilterChain();
 
-    constructor(public url: string) {
+    constructor(public url: string, public options: ProxyOptions) {
         super();
         this.reqFilters.on('error', (e: any) => this.emit('error', e));
         this.resFilters.on('error', (e: any) => this.emit('error', e));

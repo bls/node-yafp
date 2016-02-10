@@ -14,20 +14,16 @@ import { CertificateGenerator } from './certgen';
 import { IService, Service, ServiceGroup } from '@sane/service';
 import * as sniff from './sniff';
 import { relay, tlsRelay } from './relay';
-
-export interface ProxyOptions {
-    strictSSL?: boolean;
-    proxy?: string;
-    port: number;
-    host?: string;
-    caCert?: string;
-    caKey?: string;
-}
+import { ProxyOptions } from './proxy-options';
 
 const defaultProxyOptions: ProxyOptions = {
     port: 30000,
     strictSSL: false
 };
+
+function defOpt<T>(orig: T, defaultValue: T): T {
+    return typeof orig === 'undefined' ? defaultValue : orig;
+}
 
 export class Proxy extends events.EventEmitter implements IService {
     httpHandler: HttpHandler;
@@ -37,7 +33,7 @@ export class Proxy extends events.EventEmitter implements IService {
 
     constructor(options?: ProxyOptions) {
         super();
-        this.options = options || defaultProxyOptions;
+        this.options = options || Object.create(defaultProxyOptions);
         this.httpHandler = new HttpHandler(this.options);
         this.wsHandler = new WsHandler(this.options);
 
@@ -54,11 +50,13 @@ export class Proxy extends events.EventEmitter implements IService {
         let httpServer = http.createServer(requestHandler);
 
         // HTTPS
-        let moduleDir = path.normalize(__dirname + '/../../'),
-            keyFile = this.options.caKey || moduleDir + 'cert/dummy.key',
-            certFile = this.options.caCert || moduleDir + 'cert/dummy.crt',
-            key = fs.readFileSync(keyFile, 'utf8'),
-            cert = fs.readFileSync(certFile, 'utf8'),
+        let moduleDir = path.normalize(__dirname + '/../../');
+
+        this.options.caKey = defOpt(this.options.caKey, moduleDir + 'cert/dummy.key');
+        this.options.caCert = defOpt(this.options.caCert, moduleDir + 'cert/dummy.crt');
+
+        let key = fs.readFileSync(this.options.caKey, 'utf8'),
+            cert = fs.readFileSync(this.options.caCert, 'utf8'),
             certGen = new CertificateGenerator({ caKey: key, caCert: cert });
 
         let tlsOptions = {

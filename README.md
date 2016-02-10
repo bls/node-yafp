@@ -89,5 +89,6 @@ TODO / NOTES / IDEAS
   openssl s_client -connect localhost:6667 -servername www.google.com
   GET / HTTP/1.0 -> should return page.
 * Ohhh looks like we need a connection table; what about non HTTPs connect?
-
+* withResponseFile -> if you specify an existing file, that file will get deleted.... 
+  hmmm. that might not be good?
   
