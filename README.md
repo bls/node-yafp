@@ -1,5 +1,7 @@
 # yafp - Yet Another Forward Proxy
 
+[![Coverage Status](https://coveralls.io/repos/github/bls/node-yafp/badge.svg?branch=master)](https://coveralls.io/github/bls/node-yafp?branch=master)
+
 ## Summary
 
 YAFP is a forwarding proxy (set it as your proxy in the browser) for various hacking purposes. 
