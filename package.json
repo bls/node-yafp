@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "test": "mocha -s 1000 dist/test",
-    "test-cov": "istanbul cover _mocha -- -s 1000 dist/test && cat ./coverage/lcov.info | coveralls",
+    "test-cov": "istanbul cover _mocha -- -s 1000 dist/test; cat ./coverage/lcov.info | coveralls -v",
     "lint": "find lib/ -type f | xargs tslint",
     "proxy": "NODE_ENV=production node dist/bin/proxy.js",
     "build": "npm run lint && tsc",
