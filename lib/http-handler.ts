@@ -67,8 +67,11 @@ function createProxyRequest(req: http.IncomingMessage, options?: ProxyOptions): 
     options = options || {};
     let reqOpts = {
         url: destUrl,
-        strictSSL: options.strictSSL,
+        rejectUnauthorized: options.strictSSL ? true : false,
         proxy: options.proxy,
+        // TODO: The following makes HTTP GET work over an HTTPS proxy.
+        // TODO: Is there a better way to do this?
+        tunnel: options.proxy ? true : false,
         method: req.method,
         followRedirect: false,
         headers: filteredHeaders
@@ -110,7 +113,7 @@ export class HttpHandler extends events.EventEmitter {
         try {
             this.handlers.forEach(h => h(ctx));
             let requestStream = await ctx._handleRequest(req);
-            let proxyReq = createProxyRequest(req);
+            let proxyReq = createProxyRequest(req, this.options);
             proxyReq.on('error', (e: any) => this.handleError(e, res));
             requestStream.pipe(new PassthroughStream()).pipe(proxyReq); // Suppress 'request' library cleverness
             proxyReq.on('response', async (serverRes: http.IncomingMessage) => {

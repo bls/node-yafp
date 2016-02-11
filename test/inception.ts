@@ -14,9 +14,9 @@ const keepAliveValue = 'close'; // || 'keep-alive'
 
 describe('Upstream proxy support', () => {
     var testServer = new TestServer({httpPort: 30000, httpsPort: 30001}),
-        proxy1 = new Proxy({port: 30002, host: 'localhost'}),
-        proxy2 = new Proxy({port: 30004, host: 'localhost', proxy: 'http://localhost:30002'}),
-        proxy3 = new Proxy({port: 30006, host: 'localhost', proxy: 'https://localhost:30003'}),
+        proxy1 = new Proxy({ port: 30002, host: 'localhost' }),
+        proxy2 = new Proxy({ port: 30004, host: 'localhost', proxy: 'http://localhost:30002' }),
+        proxy3 = new Proxy({ port: 30006, host: 'localhost', proxy: 'https://localhost:30003', strictSSL: false }),
         upstreamHTTP = 'http://localhost:30004',
         upstreamHTTPS = 'http://localhost:30006',
         proxies = [proxy1, proxy2, proxy3],
@@ -24,6 +24,7 @@ describe('Upstream proxy support', () => {
 
     before((done) => promiseCallback(services.start(), done));
     after((done) => promiseCallback(services.stop(), done));
+
     beforeEach(() => {
         for(let p of proxies) {
             p.removeAllListeners('error');
@@ -32,9 +33,15 @@ describe('Upstream proxy support', () => {
     });
 
     async function testHTTP(url: string, proxy: string) {
+        let seen: number[] = [0, 0, 0];
+
+        proxy1.addHandler((ctx) => ctx.withRequest(() => seen[0] += 1));
+        proxy2.addHandler((ctx) => ctx.withRequest(() => seen[1] += 1));
+        proxy3.addHandler((ctx) => ctx.withRequest(() => seen[2] += 1));
+
         let r = await requestp({
-            proxy: proxy,
-            url: url
+            url: url,
+            proxy: proxy
         });
         let u = parse(url);
         assert.deepEqual(r.body, {
@@ -48,10 +55,18 @@ describe('Upstream proxy support', () => {
                 'connection': keepAliveValue
             }
         });
+        if(proxy === upstreamHTTPS) {
+            assert.deepEqual(seen, [1, 0, 1]);
+        } else {
+            assert.deepEqual(seen, [1, 1, 0]);
+        }
     }
 
     function testWS(wsUrl: string, proxy: string): Promise<void> {
         return new Promise<void>((resolve, reject) => {
+            // TODO: Need to keep track of 'seen' state, but we
+            // don't have hooks for WS messages yet.
+
             let agent = proxyAgent(wsUrl, proxy),
                 greeting = 'hello there!';
             let ws = new WebSocket(wsUrl, { agent: agent });
@@ -74,20 +89,20 @@ describe('Upstream proxy support', () => {
         await testHTTP('https://localhost:30001/test?foo=bar', upstreamHTTP);
     }));
 
-    it('should support WS protocol through upstream HTTP proxy', asyncTest(async () => {
-        await testWS('ws://localhost:30000/echo', upstreamHTTP);
-    }));
-
-    it('should support WSS protocol through upstream HTTP proxy', asyncTest(async () => {
-        await testWS('wss://localhost:30001/echo', upstreamHTTP);
-    }));
-
     it('should support HTTP GET through  upstream HTTPS proxy', asyncTest(async () => {
         await testHTTP('http://localhost:30000/test?foo=bar', upstreamHTTPS);
     }));
 
     it('should support HTTPS GET through upstream HTTPS proxy', asyncTest(async () => {
         await testHTTP('https://localhost:30001/test?foo=bar', upstreamHTTPS);
+    }));
+
+    it('should support WS protocol through upstream HTTP proxy', asyncTest(async () => {
+        await testWS('ws://localhost:30000/echo', upstreamHTTP);
+    }));
+
+    it('should support WSS protocol through upstream HTTP proxy', asyncTest(async () => {
+        await testWS('wss://localhost:30001/echo', upstreamHTTP);
     }));
 
     it('should support WS protocol through upstream HTTPS proxy', asyncTest(async () => {
