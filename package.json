@@ -5,11 +5,12 @@
   "main": "dist/lib/index.js",
   "typings": "dist/lib/index.d.ts",
   "files": [
-    "dist/",
+    "dist/lib",
     "cert/"
   ],
   "scripts": {
     "test": "mocha -s 1000 dist/test",
+    "test-cov": "istanbul cover _mocha -- -s 1000 dist/test && cat ./coverage/lcov.info | coveralls",
     "lint": "find lib/ -type f | xargs tslint",
     "proxy": "NODE_ENV=production node dist/bin/proxy.js",
     "build": "npm run lint && tsc",
@@ -33,11 +34,12 @@
   },
   "devDependencies": {
     "body-parser": "^1.14.1",
+    "coveralls": "^2.11.6",
     "express": "^4.13.3",
+    "istanbul": "^0.4.2",
     "jimp": "^0.2.21",
     "mocha": "^2.2.4",
     "tslint": "^2.5.0-beta",
-    "tunnel-agent": "^0.4.2",
     "typescript": "^1.8.0"
   },
   "dependencies": {
@@ -47,6 +49,7 @@
     "header-case-normalizer": "^1.0.3",
     "pem": "^1.8.1",
     "request": "^2.67.0",
+    "tunnel-agent": "^0.4.2",
     "ws": "^1.0.1"
   }
 }
