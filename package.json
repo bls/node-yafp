@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "test": "mocha -s 1000 dist/test",
-    "test-cov": "istanbul cover _mocha --report lcovonly -- -s 1000 dist/test; cat ./coverage/lcov.info | coveralls",
+    "test-cov": "istanbul cover _mocha --report lcovonly -- -s 1000 dist/test",
     "lint": "find lib/ -type f | xargs tslint",
     "proxy": "NODE_ENV=production node dist/bin/proxy.js",
     "build": "npm run lint && tsc",
@@ -39,6 +39,7 @@
     "istanbul": "^0.4.2",
     "jimp": "^0.2.21",
     "mocha": "^2.2.4",
+    "remap-istanbul": "^0.5.1",
     "tslint": "^2.5.0-beta",
     "typescript": "^1.8.0"
   },

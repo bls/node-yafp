@@ -1,6 +1,8 @@
 # yafp - Yet Another Forward Proxy
 
+[![Build Status](https://travis-ci.org/bls/node-yafp.svg?branch=master)](https://travis-ci.org/bls/node-yafp)
 [![Coverage Status](https://coveralls.io/repos/github/bls/node-yafp/badge.svg?branch=master)](https://coveralls.io/github/bls/node-yafp?branch=master)
+[![npm version](https://badge.fury.io/js/yafp.svg)](http://badge.fury.io/js/yafp)
 
 ## Summary
 

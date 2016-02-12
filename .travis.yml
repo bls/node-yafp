@@ -1,5 +1,9 @@
 language: node_js
-script: npm run test-cov
 node_js:
   - "5"
   - "4"
+script: npm run test-cov
+after_script:
+ - ./node_modules/.bin/remap-istanbul -i coverage/coverage.json -o coverage/coverage-remapped.lcov -t lcovonly
+ - ./node_modules/.bin/coveralls < coverage/coverage-remapped.lcov
+
